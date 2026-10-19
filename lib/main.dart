@@ -5,13 +5,16 @@ import 'services/sensor_service.dart';
 import 'services/location_service.dart';
 import 'services/blockchain_service.dart';
 import 'services/ai_coach_service.dart';
-import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
+import 'screens/login_screen.dart';
+import 'screens/main_navigation_wrapper.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   final blockchainService = BlockchainService();
   final aiCoachService = AiCoachService();
+  final authService = AuthService();
 
   runApp(
     MultiProvider(
@@ -22,20 +25,58 @@ void main() {
       child: GlobalVirtualRaceApp(
         blockchainService: blockchainService,
         aiCoachService: aiCoachService,
+        authService: authService,
       ),
     ),
   );
 }
 
-class GlobalVirtualRaceApp extends StatelessWidget {
+class GlobalVirtualRaceApp extends StatefulWidget {
   final BlockchainService blockchainService;
   final AiCoachService aiCoachService;
+  final AuthService authService;
 
   const GlobalVirtualRaceApp({
     super.key,
     required this.blockchainService,
     required this.aiCoachService,
+    required this.authService,
   });
+
+  @override
+  State<GlobalVirtualRaceApp> createState() => _GlobalVirtualRaceAppState();
+}
+
+class _GlobalVirtualRaceAppState extends State<GlobalVirtualRaceApp> {
+  bool _isLoggedIn = false;
+  bool _isCheckingAuth = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInitialAuth();
+  }
+
+  Future<void> _checkInitialAuth() async {
+    final loggedIn = await widget.authService.isLoggedIn();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = loggedIn;
+        _isCheckingAuth = false;
+      });
+    }
+  }
+
+  void _handleLoginSuccess() {
+    setState(() => _isLoggedIn = true);
+  }
+
+  Future<void> _handleLogout() async {
+    await widget.authService.logout();
+    if (mounted) {
+      setState(() => _isLoggedIn = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,10 +97,22 @@ class GlobalVirtualRaceApp extends StatelessWidget {
         ),
         fontFamily: 'Roboto',
       ),
-      home: HomeScreen(
-        blockchainService: blockchainService,
-        aiCoachService: aiCoachService,
-      ),
+      home: _isCheckingAuth
+          ? const Scaffold(
+              backgroundColor: Color(0xFF0F172A),
+              body: Center(
+                child: CircularProgressIndicator(color: Colors.cyanAccent),
+              ),
+            )
+          : _isLoggedIn
+              ? MainNavigationWrapper(
+                  blockchainService: widget.blockchainService,
+                  aiCoachService: widget.aiCoachService,
+                  onLogout: _handleLogout,
+                )
+              : LoginScreen(
+                  onLoginSuccess: _handleLoginSuccess,
+                ),
     );
   }
 }
