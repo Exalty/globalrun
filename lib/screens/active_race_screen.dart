@@ -9,6 +9,7 @@ import '../services/sensor_service.dart';
 import '../services/location_service.dart';
 import '../services/blockchain_service.dart';
 import '../services/ai_coach_service.dart';
+import '../services/notification_service.dart';
 import 'ai_coach_screen.dart';
 import 'blockchain_certificate_screen.dart';
 
@@ -51,6 +52,13 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     sensor.startTracking();
     location.startTracking();
 
+    // Trigger mobile push notification for race start
+    NotificationService().showNotification(
+      title: '🏁 Race Berlangsung: ${widget.event.title}',
+      body: 'Modul GPS & Sensor Anti-Cheat aktif. Jaga ritme langkahmu menuju garis finish!',
+      type: 'flag_off',
+    );
+
     _isRunning = true;
     _stopwatchTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isRunning) {
@@ -85,6 +93,14 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
       durationSeconds: _elapsedSeconds,
       stepsCount: sensor.stepCount,
       avgSpeedKmh: avgSpeed,
+    );
+
+    // Trigger mobile push & in-app notification for finish & NFT minted
+    NotificationService().showNotification(
+      title: '🎉 Finish Terverifikasi: ${widget.event.title}!',
+      body: 'Selamat! Total jarak ${location.totalDistanceKm.toStringAsFixed(2)} KM tervalidasi. Medali NFT Blok #${mintedBlock.index} tersimpan di blockchain.',
+      type: 'achievement',
+      payload: 'open_nft',
     );
 
     if (!mounted) return;

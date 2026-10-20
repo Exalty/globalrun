@@ -7,10 +7,14 @@ import 'services/blockchain_service.dart';
 import 'services/ai_coach_service.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
+import 'services/notification_service.dart';
 import 'screens/main_navigation_wrapper.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final notificationService = NotificationService();
+  await notificationService.init();
 
   final blockchainService = BlockchainService();
   final aiCoachService = AiCoachService();

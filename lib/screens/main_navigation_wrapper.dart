@@ -24,33 +24,6 @@ class MainNavigationWrapper extends StatefulWidget {
 class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   int _currentIndex = 0;
 
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Konfirmasi Logout', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Apakah Anda yakin ingin keluar dari sesi atlet ini?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              widget.onLogout();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Keluar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,8 +32,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         blockchainService: widget.blockchainService,
         aiCoachService: widget.aiCoachService,
       ),
-      ProfileScreen(onLogout: widget.onLogout),
       const FeedbackScreen(),
+      ProfileScreen(onLogout: widget.onLogout),
     ];
 
     return Scaffold(
@@ -82,12 +55,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
           unselectedFontSize: 12,
           type: BottomNavigationBarType.fixed,
           onTap: (index) {
-            if (index == 3) {
-              // Tab Logout memicu dialog konfirmasi
-              _showLogoutDialog();
-            } else {
-              setState(() => _currentIndex = index);
-            }
+            setState(() => _currentIndex = index);
           },
           items: const [
             BottomNavigationBarItem(
@@ -95,16 +63,12 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               label: 'Beranda',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'Profil',
-            ),
-            BottomNavigationBarItem(
               icon: Icon(Icons.rate_review_rounded),
               label: 'Saran & Kesan',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.logout_rounded, color: Colors.redAccent),
-              label: 'Logout',
+              icon: Icon(Icons.person_rounded),
+              label: 'Profil',
             ),
           ],
         ),
@@ -112,3 +76,4 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     );
   }
 }
+
