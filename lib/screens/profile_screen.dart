@@ -15,6 +15,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
+  bool _isBiometricActive = false;
 
   @override
   void initState() {
@@ -24,11 +25,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfile() async {
     final profile = await _authService.getUserProfile();
+    final bioEnabled = await _authService.isBiometricEnabled();
     if (mounted) {
       setState(() {
         _userProfile = profile;
+        _isBiometricActive = bioEnabled;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _handleToggleBiometric(bool value) async {
+    if (value) {
+      // Nyalakan: Minta pemindaian sidik jari untuk verifikasi kepemilikan perangkat
+      final success = await _authService.setBiometricEnabled(true);
+      if (success) {
+        setState(() => _isBiometricActive = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.greenAccent),
+                  SizedBox(width: 8),
+                  Text('Login sidik jari (biometrik) berhasil diaktifkan!'),
+                ],
+              ),
+              backgroundColor: Color(0xFF1E293B),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verifikasi sidik jari dibatalkan atau gagal.'),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else {
+      // Matikan
+      await _authService.setBiometricEnabled(false);
+      setState(() => _isBiometricActive = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login sidik jari dinonaktifkan.'),
+            backgroundColor: Color(0xFF1E293B),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -41,9 +92,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    final name = _userProfile?['name'] ?? 'Virtual Runner';
-    final email = _userProfile?['email'] ?? 'runner@virtualrace.com';
-    final wallet = _userProfile?['wallet'] ?? 150.0;
+    final name = (_userProfile?['name'] != null && _userProfile!['name'].toString().isNotEmpty)
+        ? _userProfile!['name']
+        : 'Atlet Global';
+    final email = (_userProfile?['email'] != null && _userProfile!['email'].toString().isNotEmpty)
+        ? _userProfile!['email']
+        : 'email@kompetisi.com';
+    final wallet = _userProfile?['wallet'] ?? 250.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -51,19 +106,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Profil Atlet', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            tooltip: 'Logout',
-            onPressed: widget.onLogout,
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Profile Card & Avatar Photo
+            // Athlete Card Header
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -75,28 +123,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Stack(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.cyanAccent, width: 2),
-                        ),
-                        child: const CircleAvatar(
-                          radius: 46,
-                          backgroundColor: Color(0xFF334155),
-                          backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'),
-                        ),
+                      CircleAvatar(
+                        radius: 46,
+                        backgroundColor: Colors.cyanAccent.withOpacity(0.2),
+                        child: const Icon(Icons.person_rounded, size: 54, color: Colors.cyanAccent),
                       ),
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
                             color: Colors.cyanAccent,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.black),
+                          child: const Icon(Icons.verified_rounded, color: Colors.black, size: 16),
                         ),
                       ),
                     ],
@@ -111,20 +152,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     email,
                     style: const TextStyle(color: Colors.white60, fontSize: 13),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.cyanAccent.withOpacity(0.15),
+                      color: _isBiometricActive
+                          ? Colors.cyanAccent.withOpacity(0.15)
+                          : Colors.white10,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.cyanAccent.withOpacity(0.4)),
+                      border: Border.all(
+                        color: _isBiometricActive
+                            ? Colors.cyanAccent.withOpacity(0.4)
+                            : Colors.white24,
+                      ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.verified_user_rounded, color: Colors.cyanAccent, size: 16),
-                        SizedBox(width: 6),
-                        Text('Akun Terverifikasi Biometrik', style: TextStyle(color: Colors.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                        Icon(
+                          _isBiometricActive ? Icons.fingerprint_rounded : Icons.lock_outline_rounded,
+                          color: _isBiometricActive ? Colors.cyanAccent : Colors.white54,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _isBiometricActive ? 'Biometrik Aktif' : 'Biometrik Nonaktif',
+                          style: TextStyle(
+                            color: _isBiometricActive ? Colors.cyanAccent : Colors.white60,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -132,7 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Virtual Wallet Card (SRS Point: Dompet Digital)
             Container(
@@ -175,9 +233,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            const SizedBox(height: 20),
+            // PENGATURAN BIOMETRIK FINGERPRINT (Bisa dinyalakan di menu profile)
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _isBiometricActive ? Colors.cyanAccent.withOpacity(0.4) : Colors.white12,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _isBiometricActive
+                                  ? Colors.cyanAccent.withOpacity(0.2)
+                                  : Colors.white10,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.fingerprint_rounded,
+                              color: _isBiometricActive ? Colors.cyanAccent : Colors.white54,
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Login Sidik Jari',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _isBiometricActive ? 'Status: Aktif' : 'Status: Nonaktif',
+                                style: TextStyle(
+                                  color: _isBiometricActive ? Colors.greenAccent : Colors.white54,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Switch(
+                        value: _isBiometricActive,
+                        activeColor: Colors.cyanAccent,
+                        onChanged: (bool value) => _handleToggleBiometric(value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isBiometricActive
+                        ? 'Sidik jari aktif. Anda bisa langsung masuk di layar login menggunakan sensor biometrik tanpa mengetik sandi.'
+                        : 'Nyalakan saklar untuk memindai sidik jari dan mengaktifkan login biometrik.',
+                    style: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.3),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
 
             // Race Career Statistics
             Container(
@@ -203,7 +332,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+
             const SizedBox(height: 16),
+
             // Shortcut Pengaturan Notifikasi Mobile
             InkWell(
               onTap: () {
@@ -249,7 +380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 24),
 
-            // Logout Button (Ringkas & Proporsional)
+            // Logout & Reset Session Button
             Center(
               child: TextButton.icon(
                 onPressed: () => _confirmLogout(context),
@@ -284,15 +415,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Konfirmasi Logout', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Keluar dari Aplikasi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text(
-          'Apakah Anda yakin ingin keluar dari akun atlet ini?',
-          style: TextStyle(color: Colors.white70),
+          'Pilih aksi keluar:\n\n• "Logout": Keluar sesi akun saat ini.\n• "Hapus Akun & Reset": Membersihkan seluruh data sesi agar Anda dapat mendaftar akun baru dari awal.',
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Batal', style: TextStyle(color: Colors.white60)),
+          ),
+          OutlinedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _authService.resetAllAccounts();
+              widget.onLogout();
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.orangeAccent),
+              foregroundColor: Colors.orangeAccent,
+            ),
+            child: const Text('Hapus & Reset'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -300,7 +444,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               widget.onLogout();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Keluar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Logout', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

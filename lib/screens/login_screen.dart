@@ -12,13 +12,15 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
-  final _emailController = TextEditingController(text: 'runner@virtualrace.com');
-  final _passwordController = TextEditingController(text: 'runner123');
+  // Tidak ada dummy email/password; form kosong untuk pendaftaran/login manual
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
 
   bool _isRegisterMode = false;
   bool _isLoading = false;
   bool _canUseBiometrics = false;
+  bool _isBiometricConfigured = false;
   String? _errorMessage;
 
   @override
@@ -27,10 +29,22 @@ class _LoginScreenState extends State<LoginScreen> {
     _checkBiometrics();
   }
 
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkBiometrics() async {
     final available = await _authService.canCheckBiometrics();
+    final configured = await _authService.isBiometricEnabled();
     if (mounted) {
-      setState(() => _canUseBiometrics = available);
+      setState(() {
+        _canUseBiometrics = available;
+        _isBiometricConfigured = configured;
+      });
     }
   }
 
@@ -50,22 +64,43 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        await _authService.register(
+        if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+          setState(() {
+            _errorMessage = 'Email dan password wajib diisi!';
+            _isLoading = false;
+          });
+          return;
+        }
+
+        final res = await _authService.register(
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-        widget.onLoginSuccess();
+
+        if (res['success'] == true) {
+          widget.onLoginSuccess();
+        } else {
+          setState(() => _errorMessage = res['message']);
+        }
       } else {
-        final success = await _authService.login(
+        if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+          setState(() {
+            _errorMessage = 'Email dan password wajib diisi!';
+            _isLoading = false;
+          });
+          return;
+        }
+
+        final res = await _authService.login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
 
-        if (success) {
+        if (res['success'] == true) {
           widget.onLoginSuccess();
         } else {
-          setState(() => _errorMessage = 'Email atau password salah!');
+          setState(() => _errorMessage = res['message']);
         }
       }
     } catch (e) {
@@ -76,29 +111,62 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleBiometricLogin() async {
+    // Cek apakah pengguna sudah mengaktifkan biometrik di menu Profil
+    final isConfigured = await _authService.isBiometricEnabled();
+
+    if (!isConfigured) {
+      _showBiometricNotConfiguredDialog();
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    final authenticated = await _authService.authenticateWithBiometrics();
-
-    if (authenticated) {
-      // Pastikan ada sesi tersimpan
-      final loggedIn = await _authService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-      if (loggedIn) {
+    try {
+      final success = await _authService.loginWithBiometrics();
+      if (success) {
         widget.onLoginSuccess();
       } else {
-        widget.onLoginSuccess();
+        setState(() => _errorMessage = 'Pemindaian sidik jari dibatalkan atau gagal.');
       }
-    } else {
-      setState(() => _errorMessage = 'Verifikasi sidik jari dibatalkan atau gagal');
+    } catch (e) {
+      setState(() => _errorMessage = 'Kesalahan sensor biometrik: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
 
-    if (mounted) setState(() => _isLoading = false);
+  void _showBiometricNotConfiguredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.fingerprint_rounded, color: Colors.cyanAccent),
+            SizedBox(width: 10),
+            Text('Biometrik Belum Aktif', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Login sidik jari belum dinyalakan untuk akun ini.\n\nSilakan masuk terlebih dahulu menggunakan email dan password, lalu nyalakan "Login Sidik Jari" di menu Profil.',
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.cyanAccent,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -146,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _isRegisterMode ? 'Buat akun pelari baru' : 'Masuk untuk sinkronisasi lomba & leaderboard',
+                  _isRegisterMode ? 'Daftar akun atlet baru secara manual' : 'Masuk untuk sinkronisasi lomba & leaderboard',
                   style: const TextStyle(color: Colors.white60, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
@@ -168,6 +236,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             labelText: 'Nama Lengkap',
+                            hintText: 'Contoh: Bima Perkasa',
+                            hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
                             labelStyle: const TextStyle(color: Colors.white60),
                             prefixIcon: const Icon(Icons.person_rounded, color: Colors.cyanAccent),
                             filled: true,
@@ -183,8 +253,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: _emailController,
                         style: const TextStyle(color: Colors.white),
+                        keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           labelText: 'Email',
+                          hintText: 'contoh@domain.com',
+                          hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
                           labelStyle: const TextStyle(color: Colors.white60),
                           prefixIcon: const Icon(Icons.email_rounded, color: Colors.cyanAccent),
                           filled: true,
@@ -237,7 +310,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                       const SizedBox(height: 24),
 
-                      // Tombol Submit Manual
+                      // Tombol Submit Manual (Register / Login)
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -261,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      // Tombol Biometrik Fingerprint
+                      // Tombol Biometrik Fingerprint (Hanya di mode Login)
                       if (!_isRegisterMode && _canUseBiometrics) ...[
                         const SizedBox(height: 16),
                         Row(
@@ -277,14 +350,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           onPressed: _isLoading ? null : _handleBiometricLogin,
-                          icon: const Icon(Icons.fingerprint_rounded, color: Colors.cyanAccent, size: 28),
-                          label: const Text(
-                            'Masuk Sidik Jari (Biometrik)',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          icon: Icon(
+                            Icons.fingerprint_rounded,
+                            color: _isBiometricConfigured ? Colors.cyanAccent : Colors.white38,
+                            size: 28,
+                          ),
+                          label: Text(
+                            _isBiometricConfigured
+                                ? 'Masuk Sidik Jari (Biometrik)'
+                                : 'Masuk Sidik Jari (Belum Aktif)',
+                            style: TextStyle(
+                              color: _isBiometricConfigured ? Colors.white : Colors.white60,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                            side: const BorderSide(color: Colors.cyanAccent),
+                            side: BorderSide(
+                              color: _isBiometricConfigured ? Colors.cyanAccent : Colors.white24,
+                            ),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                           ),
                         ),

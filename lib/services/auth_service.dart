@@ -15,19 +15,19 @@ class AuthService {
   static const String _keyJwtToken = 'jwt_token';
 
   // Base URL backend Node.js REST API
-  // 10.0.2.2 untuk Android emulator, 192.168.110.5 untuk perangkat fisik via Wi-Fi lokal, localhost untuk desktop/web
+  // 192.168.110.5 untuk perangkat fisik Android via Wi-Fi lokal, 10.0.2.2 untuk Android emulator, localhost untuk web/desktop
   static const String baseUrl = 'http://192.168.110.5:5000';
   static const String emulatorUrl = 'http://10.0.2.2:5000';
 
   final LocalAuthentication _localAuth = LocalAuthentication();
 
-  // Helper untuk hashing SHA-256 (Non-Firebase otentikasi mandiri)
+  // Helper hashing SHA-256 (Otentikasi mandiri non-Firebase)
   static String hashPassword(String password) {
     final bytes = utf8.encode(password);
     return sha256.convert(bytes).toString();
   }
 
-  // Cek ketersediaan sensor biometrik (Fingerprint/FaceID)
+  // Cek ketersediaan hardware sensor biometrik (Fingerprint/FaceID)
   Future<bool> canCheckBiometrics() async {
     try {
       final canAuthenticateWithBiometrics = await _localAuth.canCheckBiometrics;
@@ -38,11 +38,11 @@ class AuthService {
     }
   }
 
-  // Autentikasi menggunakan Fingerprint / FaceID
-  Future<bool> authenticateWithBiometrics() async {
+  // Pemicu pemindaian sidik jari
+  Future<bool> authenticateWithBiometrics({String? reason}) async {
     try {
       return await _localAuth.authenticate(
-        localizedReason: 'Pindai sidik jari Anda untuk masuk ke Global Virtual Race',
+        localizedReason: reason ?? 'Pindai sidik jari Anda untuk verifikasi identitas',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,
@@ -53,16 +53,17 @@ class AuthService {
     }
   }
 
-  // Pendaftaran Pengguna Baru (Terhubung ke Node.js REST API + fallback lokal)
-  Future<bool> register({
+  // Pendaftaran Akun Manual Baru (PostgreSQL Backend + Local Cache)
+  Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final cleanEmail = email.trim().toLowerCase();
+    String? token;
 
-    // 1. Coba sinkronisasi ke REST API Backend (Bcrypt + PostgreSQL)
+    // 1. Kirim ke REST API Node.js (Bcrypt + PostgreSQL)
     for (final url in [baseUrl, emulatorUrl]) {
       try {
         final response = await http.post(
@@ -73,39 +74,50 @@ class AuthService {
             'email': cleanEmail,
             'password': password,
           }),
-        ).timeout(const Duration(seconds: 3));
+        ).timeout(const Duration(seconds: 4));
 
         if (response.statusCode == 201) {
           final data = jsonDecode(response.body);
-          if (data['token'] != null) {
-            await prefs.setString(_keyJwtToken, data['token']);
-          }
+          token = data['token'];
           break;
+        } else if (response.statusCode == 409) {
+          return {
+            'success': false,
+            'message': 'Email sudah terdaftar. Silakan gunakan email lain atau login.',
+          };
         }
       } catch (_) {
-        // Fallback jika backend belum terhubung/offline
+        // Fallback jika backend offline/unreachable
       }
     }
 
-    // 2. Simpan kredensial & status di penyimpanan lokal
-    await prefs.setString(_keyUserName, name);
+    // 2. Simpan profil pengguna ke local storage
+    if (token != null) {
+      await prefs.setString(_keyJwtToken, token);
+    }
+    await prefs.setString(_keyUserName, name.trim());
     await prefs.setString(_keyUserEmail, cleanEmail);
     await prefs.setString(_keyPasswordHash, hashPassword(password));
     await prefs.setBool(_keyIsLoggedIn, true);
-    await prefs.setBool(_keyBiometricEnabled, true);
+    // BIOMETRIK DEFAULT DIMATIKAN — Hanya bisa dinyalakan manual di menu Profil
+    await prefs.setBool(_keyBiometricEnabled, false);
     await prefs.setDouble(_keyUserWallet, 250.0);
-    return true;
+
+    return {
+      'success': true,
+      'message': 'Pendaftaran berhasil!',
+    };
   }
 
-  // Login dengan Email & Password (Bcrypt & JWT via Backend + fallback lokal)
-  Future<bool> login({
+  // Login Manual dengan Email & Password
+  Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final cleanEmail = email.trim().toLowerCase();
 
-    // 1. Coba login melalui REST API Node.js (JWT & Bcrypt)
+    // 1. Coba login melalui REST API Node.js (Bcrypt + JWT)
     for (final url in [baseUrl, emulatorUrl]) {
       try {
         final response = await http.post(
@@ -115,7 +127,7 @@ class AuthService {
             'email': cleanEmail,
             'password': password,
           }),
-        ).timeout(const Duration(seconds: 3));
+        ).timeout(const Duration(seconds: 4));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -126,39 +138,72 @@ class AuthService {
               await prefs.setString(_keyUserEmail, data['user']['email'] ?? cleanEmail);
             }
             await prefs.setBool(_keyIsLoggedIn, true);
-            await prefs.setBool(_keyBiometricEnabled, true);
-            return true;
+            return {'success': true, 'message': 'Login berhasil!'};
           }
+        } else if (response.statusCode == 401) {
+          return {'success': false, 'message': 'Email atau password salah.'};
         }
       } catch (_) {
-        // Fallback ke penyimpanan lokal jika server offline
+        // Fallback jika backend offline
       }
     }
 
-    // 2. Fallback verifikasi lokal jika server sedang offline
+    // 2. Verifikasi offline dari akun yang pernah didaftarkan
     final savedEmail = prefs.getString(_keyUserEmail);
     final savedHash = prefs.getString(_keyPasswordHash);
 
-    // Akun default demo jika belum pernah register
-    if (savedEmail == null) {
-      if (cleanEmail == 'runner@virtualrace.com' && password == 'runner123') {
-        await prefs.setString(_keyUserName, 'Virtual Runner Pro');
-        await prefs.setString(_keyUserEmail, 'runner@virtualrace.com');
-        await prefs.setString(_keyPasswordHash, hashPassword('runner123'));
-        await prefs.setBool(_keyIsLoggedIn, true);
-        await prefs.setBool(_keyBiometricEnabled, true);
-        await prefs.setDouble(_keyUserWallet, 150.0);
-        return true;
-      }
+    if (savedEmail != null && savedEmail == cleanEmail && savedHash == hashPassword(password)) {
+      await prefs.setBool(_keyIsLoggedIn, true);
+      return {'success': true, 'message': 'Login berhasil (mode offline)!'};
+    }
+
+    return {
+      'success': false,
+      'message': 'Akun tidak ditemukan atau password salah. Silakan daftar akun manual terlebih dahulu.',
+    };
+  }
+
+  // Login menggunakan Sidik Jari (Hanya jika sudah diaktifkan di menu Profil)
+  Future<bool> loginWithBiometrics() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool(_keyBiometricEnabled) ?? false;
+    final savedEmail = prefs.getString(_keyUserEmail);
+
+    if (!isEnabled || savedEmail == null) {
       return false;
     }
 
-    if (savedEmail == cleanEmail && savedHash == hashPassword(password)) {
+    final authenticated = await authenticateWithBiometrics(
+      reason: 'Pindai sidik jari Anda untuk masuk ke Global Virtual Race',
+    );
+
+    if (authenticated) {
       await prefs.setBool(_keyIsLoggedIn, true);
       return true;
     }
-
     return false;
+  }
+
+  // Mengatur status Biometrik dari Menu Profil (Nyalakan / Matikan)
+  Future<bool> setBiometricEnabled(bool enable) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (enable) {
+      // Saat mau menyalakan, pengguna wajib memindai sidik jari untuk validasi keamanan
+      final authenticated = await authenticateWithBiometrics(
+        reason: 'Pindai sidik jari Anda untuk mengaktifkan login biometrik',
+      );
+
+      if (authenticated) {
+        await prefs.setBool(_keyBiometricEnabled, true);
+        return true;
+      }
+      return false;
+    } else {
+      // Mematikan biometrik
+      await prefs.setBool(_keyBiometricEnabled, false);
+      return true;
+    }
   }
 
   // Cek Status Login Saat Buka Aplikasi
@@ -167,34 +212,33 @@ class AuthService {
     return prefs.getBool(_keyIsLoggedIn) ?? false;
   }
 
-  // Ambil Token JWT yang tersimpan
-  Future<String?> getJwtToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyJwtToken);
-  }
-
-  // Cek Apakah Biometrik Diaktifkan
+  // Cek Apakah Biometrik Diaktifkan di Profil
   Future<bool> isBiometricEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyBiometricEnabled) ?? false;
   }
 
-  // Ambil Data Profil
+  // Ambil Data Profil Pengguna
   Future<Map<String, dynamic>> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     return {
-      'name': prefs.getString(_keyUserName) ?? 'Virtual Runner',
-      'email': prefs.getString(_keyUserEmail) ?? 'runner@virtualrace.com',
-      'wallet': prefs.getDouble(_keyUserWallet) ?? 150.0,
+      'name': prefs.getString(_keyUserName) ?? '',
+      'email': prefs.getString(_keyUserEmail) ?? '',
+      'wallet': prefs.getDouble(_keyUserWallet) ?? 250.0,
       'photo': prefs.getString(_keyUserPhoto) ?? '',
-      'hasToken': prefs.getString(_keyJwtToken) != null,
+      'isBiometricEnabled': prefs.getBool(_keyBiometricEnabled) ?? false,
     };
   }
 
-  // Logout
+  // Logout Saja (Menjaga akun tetap terdaftar, hanya keluar sesi)
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIsLoggedIn, false);
-    await prefs.remove(_keyJwtToken);
+  }
+
+  // Hapus Akun & Bersihkan Seluruh Data Lokal (Fresh Start)
+  Future<void> resetAllAccounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 }
