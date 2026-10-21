@@ -1,0 +1,19 @@
+{
+  "name": "globalrun-backend",
+  "version": "1.0.0",
+  "description": "Backend REST API with PostgreSQL, Bcrypt, and JWT for Global Virtual Race (BL-01 & BL-02)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:init": "node src/database/initDb.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}

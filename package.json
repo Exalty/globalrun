@@ -1,0 +1,11 @@
+{
+  "name": "globalrun",
+  "private": true,
+  "description": "Global Virtual Race - Flutter Frontend & Node.js Backend",
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "dev": "node --watch backend/src/server.js",
+    "backend": "node backend/src/server.js",
+    "db:init": "node backend/src/database/initDb.js"
+  }
+}

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -11,6 +12,12 @@ class AuthService {
   static const String _keyBiometricEnabled = 'biometric_enabled';
   static const String _keyUserPhoto = 'user_photo';
   static const String _keyUserWallet = 'user_wallet_balance';
+  static const String _keyJwtToken = 'jwt_token';
+
+  // Base URL backend Node.js REST API
+  // 10.0.2.2 untuk Android emulator, 192.168.110.5 untuk perangkat fisik via Wi-Fi lokal, localhost untuk desktop/web
+  static const String baseUrl = 'http://192.168.110.5:5000';
+  static const String emulatorUrl = 'http://10.0.2.2:5000';
 
   final LocalAuthentication _localAuth = LocalAuthentication();
 
@@ -46,34 +53,95 @@ class AuthService {
     }
   }
 
-  // Pendaftaran Pengguna Baru
+  // Pendaftaran Pengguna Baru (Terhubung ke Node.js REST API + fallback lokal)
   Future<bool> register({
     required String name,
     required String email,
     required String password,
   }) async {
     final prefs = await SharedPreferences.getInstance();
+    final cleanEmail = email.trim().toLowerCase();
+
+    // 1. Coba sinkronisasi ke REST API Backend (Bcrypt + PostgreSQL)
+    for (final url in [baseUrl, emulatorUrl]) {
+      try {
+        final response = await http.post(
+          Uri.parse('$url/api/auth/register'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'full_name': name.trim(),
+            'email': cleanEmail,
+            'password': password,
+          }),
+        ).timeout(const Duration(seconds: 3));
+
+        if (response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+          if (data['token'] != null) {
+            await prefs.setString(_keyJwtToken, data['token']);
+          }
+          break;
+        }
+      } catch (_) {
+        // Fallback jika backend belum terhubung/offline
+      }
+    }
+
+    // 2. Simpan kredensial & status di penyimpanan lokal
     await prefs.setString(_keyUserName, name);
-    await prefs.setString(_keyUserEmail, email.trim().toLowerCase());
+    await prefs.setString(_keyUserEmail, cleanEmail);
     await prefs.setString(_keyPasswordHash, hashPassword(password));
     await prefs.setBool(_keyIsLoggedIn, true);
     await prefs.setBool(_keyBiometricEnabled, true);
-    await prefs.setDouble(_keyUserWallet, 250.0); // Default saldo awal USD
+    await prefs.setDouble(_keyUserWallet, 250.0);
     return true;
   }
 
-  // Login Manual dengan Email & Password
+  // Login dengan Email & Password (Bcrypt & JWT via Backend + fallback lokal)
   Future<bool> login({
     required String email,
     required String password,
   }) async {
     final prefs = await SharedPreferences.getInstance();
+    final cleanEmail = email.trim().toLowerCase();
+
+    // 1. Coba login melalui REST API Node.js (JWT & Bcrypt)
+    for (final url in [baseUrl, emulatorUrl]) {
+      try {
+        final response = await http.post(
+          Uri.parse('$url/api/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': cleanEmail,
+            'password': password,
+          }),
+        ).timeout(const Duration(seconds: 3));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['token'] != null) {
+            await prefs.setString(_keyJwtToken, data['token']);
+            if (data['user'] != null) {
+              await prefs.setString(_keyUserName, data['user']['full_name'] ?? 'Virtual Runner');
+              await prefs.setString(_keyUserEmail, data['user']['email'] ?? cleanEmail);
+            }
+            await prefs.setBool(_keyIsLoggedIn, true);
+            await prefs.setBool(_keyBiometricEnabled, true);
+            return true;
+          }
+        }
+      } catch (_) {
+        // Fallback ke penyimpanan lokal jika server offline
+      }
+    }
+
+    // 2. Fallback verifikasi lokal jika server sedang offline
     final savedEmail = prefs.getString(_keyUserEmail);
     final savedHash = prefs.getString(_keyPasswordHash);
 
     // Akun default demo jika belum pernah register
     if (savedEmail == null) {
-      if (email.trim().toLowerCase() == 'runner@virtualrace.com' && password == 'runner123') {
+      if (cleanEmail == 'runner@virtualrace.com' && password == 'runner123') {
         await prefs.setString(_keyUserName, 'Virtual Runner Pro');
         await prefs.setString(_keyUserEmail, 'runner@virtualrace.com');
         await prefs.setString(_keyPasswordHash, hashPassword('runner123'));
@@ -85,7 +153,7 @@ class AuthService {
       return false;
     }
 
-    if (savedEmail == email.trim().toLowerCase() && savedHash == hashPassword(password)) {
+    if (savedEmail == cleanEmail && savedHash == hashPassword(password)) {
       await prefs.setBool(_keyIsLoggedIn, true);
       return true;
     }
@@ -97,6 +165,12 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_keyIsLoggedIn) ?? false;
+  }
+
+  // Ambil Token JWT yang tersimpan
+  Future<String?> getJwtToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyJwtToken);
   }
 
   // Cek Apakah Biometrik Diaktifkan
@@ -113,6 +187,7 @@ class AuthService {
       'email': prefs.getString(_keyUserEmail) ?? 'runner@virtualrace.com',
       'wallet': prefs.getDouble(_keyUserWallet) ?? 150.0,
       'photo': prefs.getString(_keyUserPhoto) ?? '',
+      'hasToken': prefs.getString(_keyJwtToken) != null,
     };
   }
 
@@ -120,5 +195,6 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIsLoggedIn, false);
+    await prefs.remove(_keyJwtToken);
   }
 }
