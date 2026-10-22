@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/currency_service.dart';
+import '../services/timezone_service.dart';
 import 'notification_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -144,13 +147,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    // Consume currency & timezone providers — otomatis rebuild saat berubah
+    final currencyService = context.watch<CurrencyService>();
+    final timezoneService = context.watch<TimezoneService>();
+    final selectedCurrency = currencyService.selectedCurrency;
+    final selectedTimezone = timezoneService.selectedTimezone;
+
     final name = (_userProfile?['name'] != null && _userProfile!['name'].toString().isNotEmpty)
         ? _userProfile!['name']
         : 'Atlet Global';
     final email = (_userProfile?['email'] != null && _userProfile!['email'].toString().isNotEmpty)
         ? _userProfile!['email']
         : 'email@kompetisi.com';
-    final wallet = _userProfile?['wallet'] ?? 250.0;
+    final walletUsd = (_userProfile?['wallet'] ?? 250.0) as double;
+
+    // Format wallet balance sesuai mata uang terpilih
+    final walletFormatted = currencyService.formatCurrency(walletUsd, selectedCurrency);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -244,7 +256,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 16),
 
-            // Virtual Wallet Card (SRS Point: Dompet Digital)
+            // ══════════════════════════════════════════════════════════
+            // DOMPET DIGITAL — Saldo ditampilkan dalam mata uang terpilih
+            // Perubahan mata uang di HomeScreen otomatis memperbarui di sini
+            // ══════════════════════════════════════════════════════════
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -256,29 +271,315 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.tealAccent.withOpacity(0.3)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Dompet Digital (Race Wallet)', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                      const SizedBox(height: 6),
-                      Text('\$$wallet USD', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Dompet Digital (Race Wallet)',
+                                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                                ),
+                                const Spacer(),
+                                // Badge mata uang aktif
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.tealAccent.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.tealAccent.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    selectedCurrency,
+                                    style: const TextStyle(
+                                      color: Colors.tealAccent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Saldo dalam mata uang terpilih
+                            Text(
+                              walletFormatted,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // Info konversi dari USD
+                            if (selectedCurrency != 'USD')
+                              Text(
+                                '≈ \$${walletUsd.toStringAsFixed(2)} USD',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Top-up saldo berhasil disimulasikan!')),
-                      );
-                    },
-                    icon: const Icon(Icons.add_card_rounded, size: 18),
-                    label: const Text('Top Up'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.tealAccent,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Top-up saldo berhasil disimulasikan!')),
+                            );
+                          },
+                          icon: const Icon(Icons.add_card_rounded, size: 18),
+                          label: const Text('Top Up'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.tealAccent,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ══════════════════════════════════════════════════════════
+            // PENGATURAN MATA UANG & ZONA WAKTU (di halaman Profile)
+            // ══════════════════════════════════════════════════════════
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.cyanAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.currency_exchange_rounded, color: Colors.cyanAccent, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mata Uang & Zona Waktu',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Perubahan berlaku di seluruh aplikasi',
+                              style: TextStyle(color: Colors.white54, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // API status dot
+                      Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(
+                          color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Pilihan Mata Uang
+                  const Text('Mata Uang Aktif:', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF334155),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: selectedCurrency,
+                      dropdownColor: const Color(0xFF1E293B),
+                      underline: const SizedBox(),
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      items: currencyService.currencies.keys.map((c) {
+                        final rate = currencyService.currencies[c]!;
+                        return DropdownMenuItem(
+                          value: c,
+                          child: Row(
+                            children: [
+                              Text(
+                                rate.symbol,
+                                style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${rate.code} — ${rate.name}',
+                                  style: const TextStyle(fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          currencyService.setSelectedCurrency(val);
+                        }
+                      },
+                    ),
+                  ),
+
+                  // Kurs info
+                  if (currencyService.hasApiData)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        '📊 ${currencyService.getRateLabel(selectedCurrency)}',
+                        style: const TextStyle(color: Colors.greenAccent, fontSize: 11),
+                      ),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  // Pilihan Zona Waktu
+                  const Text('Zona Waktu Aktif:', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF334155),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: DropdownButton<TimezoneModel>(
+                      isExpanded: true,
+                      value: selectedTimezone,
+                      dropdownColor: const Color(0xFF1E293B),
+                      underline: const SizedBox(),
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      items: timezoneService.supportedZones.map((z) {
+                        return DropdownMenuItem(
+                          value: z,
+                          child: Row(
+                            children: [
+                              Text(z.flag, style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${z.code} (${timezoneService.getOffsetLabel(z)})',
+                                  style: const TextStyle(fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          timezoneService.setSelectedTimezone(val);
+                        }
+                      },
+                    ),
+                  ),
+
+                  // Timezone API info
+                  if (timezoneService.hasApiData)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        '🌍 ${selectedTimezone.label} • ${timezoneService.getOffsetLabel(selectedTimezone)}',
+                        style: const TextStyle(color: Colors.greenAccent, fontSize: 11),
+                      ),
+                    ),
+
+                  const SizedBox(height: 12),
+                  const Divider(color: Colors.white12, height: 1),
+                  const SizedBox(height: 10),
+
+                  // Refresh dari API
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: (currencyService.isLoading || timezoneService.isLoading)
+                          ? null
+                          : () async {
+                              await currencyService.fetchRatesFromApi();
+                              await timezoneService.fetchTimezonesFromApi();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Icon(
+                                          currencyService.hasApiData
+                                              ? Icons.check_circle_rounded
+                                              : Icons.warning_rounded,
+                                          color: currencyService.hasApiData
+                                              ? Colors.greenAccent
+                                              : Colors.orangeAccent,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            currencyService.hasApiData
+                                                ? 'Kurs & zona waktu berhasil diperbarui!'
+                                                : 'Gagal memperbarui. Menggunakan data offline.',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: const Color(0xFF1E293B),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                      icon: (currencyService.isLoading || timezoneService.isLoading)
+                          ? const SizedBox(
+                              width: 16, height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.cyanAccent),
+                            )
+                          : const Icon(Icons.refresh_rounded, size: 18),
+                      label: Text(
+                        (currencyService.isLoading || timezoneService.isLoading)
+                            ? 'Memperbarui dari API...'
+                            : 'Perbarui Kurs & Zona Waktu (API)',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.cyanAccent,
+                        side: const BorderSide(color: Colors.cyanAccent),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
                   ),
                 ],

@@ -7,6 +7,8 @@ import 'services/location_service.dart';
 import 'services/blockchain_service.dart';
 import 'services/ai_coach_service.dart';
 import 'services/auth_service.dart';
+import 'services/currency_service.dart';
+import 'services/timezone_service.dart';
 import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
 import 'screens/main_navigation_wrapper.dart';
@@ -27,11 +29,20 @@ void main() async {
   );
   final authService = AuthService();
 
+  // Inisialisasi Currency & Timezone services (fetch dari API eksternal)
+  final currencyService = CurrencyService();
+  await currencyService.init();
+
+  final timezoneService = TimezoneService();
+  await timezoneService.init();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => MotionSensorService()),
         ChangeNotifierProvider(create: (_) => LocationTrackingService()),
+        ChangeNotifierProvider.value(value: currencyService),
+        ChangeNotifierProvider.value(value: timezoneService),
       ],
       child: GlobalVirtualRaceApp(
         blockchainService: blockchainService,

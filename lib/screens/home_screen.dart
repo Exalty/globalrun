@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/race_event.dart';
 import '../services/timezone_service.dart';
@@ -28,8 +29,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final NotificationService _notificationService = NotificationService();
-  TimezoneModel selectedTimezone = TimezoneService.supportedZones[0]; // WIB default
-  String selectedCurrency = 'IDR'; // IDR default
 
   final List<RaceEvent> events = RaceEvent.sampleEvents();
 
@@ -54,6 +53,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showEventDetailModal(RaceEvent event) {
+    final currencyService = context.read<CurrencyService>();
+    final timezoneService = context.read<TimezoneService>();
+    final selectedTimezone = timezoneService.selectedTimezone;
+    final selectedCurrency = currencyService.selectedCurrency;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -115,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                TimezoneService.formatForZone(event.startTimeUtc, selectedTimezone),
+                timezoneService.formatForZone(event.startTimeUtc, selectedTimezone),
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
               ),
               Text(
@@ -137,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                CurrencyService.formatCurrency(event.feeUsd, selectedCurrency),
+                currencyService.formatCurrency(event.feeUsd, selectedCurrency),
                 style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 22),
               ),
 
@@ -148,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () {
                     _notificationService.showNotification(
                       title: '⏰ Pengingat Disetel: ${event.title}',
-                      body: 'Notifikasi akan dikirim 15 menit sebelum flag-off race (${TimezoneService.formatForZone(event.startTimeUtc, selectedTimezone)}).',
+                      body: 'Notifikasi akan dikirim 15 menit sebelum flag-off race (${timezoneService.formatForZone(event.startTimeUtc, selectedTimezone)}).',
                       type: 'race_reminder',
                       payload: 'open_race:${event.id}',
                     );
@@ -208,6 +212,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Consume providers — rebuild otomatis saat currency/timezone berubah
+    final currencyService = context.watch<CurrencyService>();
+    final timezoneService = context.watch<TimezoneService>();
+    final selectedTimezone = timezoneService.selectedTimezone;
+    final selectedCurrency = currencyService.selectedCurrency;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
@@ -315,16 +325,111 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.public_rounded, color: Colors.cyanAccent, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Sinkronisasi Global Lintas Negara',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      const Icon(Icons.public_rounded, color: Colors.cyanAccent, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Sinkronisasi Global Lintas Negara',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
                       ),
+                      // Tombol refresh kurs dari API
+                      if (currencyService.isLoading || timezoneService.isLoading)
+                        const SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.cyanAccent,
+                          ),
+                        )
+                      else
+                        InkWell(
+                          onTap: () async {
+                            await currencyService.fetchRatesFromApi();
+                            await timezoneService.fetchTimezonesFromApi();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      Icon(
+                                        currencyService.hasApiData ? Icons.check_circle : Icons.warning_rounded,
+                                        color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          currencyService.hasApiData
+                                              ? 'Kurs & zona waktu berhasil diperbarui dari API!'
+                                              : 'Gagal memperbarui. Menggunakan data fallback.',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFF1E293B),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              size: 18,
+                              color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
+
+                  // API status badge
+                  if (currencyService.hasApiData && currencyService.lastUpdated != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.greenAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Data API real-time • ${currencyService.getRateLabel(selectedCurrency)}',
+                            style: const TextStyle(color: Colors.greenAccent, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (currencyService.lastError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.orangeAccent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Mode offline (fallback rates)',
+                            style: TextStyle(color: Colors.orangeAccent, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   const SizedBox(height: 14),
                   Row(
                     children: [
@@ -347,14 +452,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 dropdownColor: const Color(0xFF1E293B),
                                 underline: const SizedBox(),
                                 style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                items: TimezoneService.supportedZones.map((z) {
+                                items: timezoneService.supportedZones.map((z) {
                                   return DropdownMenuItem(
                                     value: z,
                                     child: Text('${z.flag} ${z.code}', overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  if (val != null) setState(() => selectedTimezone = val);
+                                  if (val != null) timezoneService.setSelectedTimezone(val);
                                 },
                               ),
                             ),
@@ -381,14 +486,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 dropdownColor: const Color(0xFF1E293B),
                                 underline: const SizedBox(),
                                 style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                items: CurrencyService.currencies.keys.map((c) {
+                                items: currencyService.currencies.keys.map((c) {
                                   return DropdownMenuItem(
                                     value: c,
-                                    child: Text('$c (${CurrencyService.currencies[c]!.symbol})'),
+                                    child: Text('$c (${currencyService.currencies[c]!.symbol})'),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
-                                  if (val != null) setState(() => selectedCurrency = val);
+                                  if (val != null) currencyService.setSelectedCurrency(val);
                                 },
                               ),
                             ),
@@ -580,8 +685,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: _filteredEvents.length,
                     itemBuilder: (context, index) {
                       final ev = _filteredEvents[index];
-                      final convertedFee = CurrencyService.formatCurrency(ev.feeUsd, selectedCurrency);
-                      final raceTimeStr = TimezoneService.formatForZone(ev.startTimeUtc, selectedTimezone);
+                      final convertedFee = currencyService.formatCurrency(ev.feeUsd, selectedCurrency);
+                      final raceTimeStr = timezoneService.formatForZone(ev.startTimeUtc, selectedTimezone);
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -726,4 +831,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
