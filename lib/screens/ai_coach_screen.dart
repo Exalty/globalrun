@@ -216,8 +216,8 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
     switch (widget.coachService.lastSourceUsed) {
       case 'gemini':
         return (label: 'Gemini Live', color: Colors.greenAccent);
-      case 'error':
-        return (label: 'Gemini Error', color: Colors.redAccent);
+      case 'local':
+        return (label: 'Mode Offline', color: Colors.amberAccent);
       default:
         return _hasApiKey
             ? (label: 'Siap', color: Colors.lightBlueAccent)
