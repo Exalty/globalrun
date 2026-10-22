@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'services/sensor_service.dart';
 import 'services/location_service.dart';
@@ -13,11 +14,17 @@ import 'screens/main_navigation_wrapper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load environment variables from .env file
+  await dotenv.load(fileName: '.env');
+
   final notificationService = NotificationService();
   await notificationService.init();
 
   final blockchainService = BlockchainService();
-  final aiCoachService = AiCoachService();
+  // Inject Gemini API key from .env automatically
+  final aiCoachService = AiCoachService(
+    apiKey: dotenv.env['GEMINI_API_KEY'],
+  );
   final authService = AuthService();
 
   runApp(
