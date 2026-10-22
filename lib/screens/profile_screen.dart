@@ -86,58 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _openDeviceSecuritySettings() async {
-    await _authService.openDeviceSecuritySettings();
-  }
-
-  void _handleDeleteBiometric() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Row(
-          children: [
-            Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
-            SizedBox(width: 8),
-            Text('Hapus Sidik Jari?', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text(
-          'Data sidik jari akun Anda akan dihapus dari aplikasi ini.\n\nAnda tidak bisa lagi masuk menggunakan sidik jari sampai Anda mendaftarkan jari baru di menu ini.',
-          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: Colors.white60)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _authService.removeBiometrics();
-              setState(() => _isBiometricActive = false);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Data sidik jari berhasil dihapus dari aplikasi.'),
-                    backgroundColor: Color(0xFF1E293B),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Hapus Sekarang'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -651,69 +599,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _isBiometricActive
-                        ? 'Sidik jari aktif. Anda bisa langsung masuk di layar login menggunakan jari yang terdaftar di HP.'
-                        : 'Nyalakan saklar untuk memindai sidik jari dan mengaktifkan fitur login biometrik.',
+                        ? 'Aktif — Anda dapat login langsung menggunakan sidik jari yang terdaftar di HP Anda.'
+                        : 'Nonaktif — Nyalakan saklar untuk mengaktifkan login cepat dengan sidik jari.',
                     style: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.3),
                   ),
-                  const SizedBox(height: 12),
-                  const Divider(color: Colors.white12, height: 1),
-                  const SizedBox(height: 12),
-                  if (_isBiometricActive) ...[
-                    Row(
-                      children: [
-                        // Tombol Buka Pengaturan HP
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _openDeviceSecuritySettings,
-                            icon: const Icon(Icons.settings_suggest_rounded, size: 16),
-                            label: const Text('Pengaturan HP', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.cyanAccent,
-                              side: const BorderSide(color: Colors.cyanAccent),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // Tombol Hapus Sidik Jari
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _handleDeleteBiometric,
-                            icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                            label: const Text('Hapus Sidik Jari', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.redAccent,
-                              side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    // Panduan saat biometrik nonaktif
-                    OutlinedButton.icon(
-                      onPressed: _openDeviceSecuritySettings,
-                      icon: const Icon(Icons.settings_rounded, size: 16),
-                      label: const Text(
-                        'Daftarkan Jari Baru di Pengaturan HP',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Colors.white24),
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      '💡 Catatan: Sensor HP hanya menerima jari yang sudah terdaftar di Pengaturan HP Anda (Kata Sandi & Keamanan > Sidik Jari).',
-                      style: TextStyle(color: Colors.white38, fontSize: 10, height: 1.3),
-                    ),
-                  ],
                 ],
               ),
             ),
