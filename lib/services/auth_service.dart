@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
@@ -14,6 +15,8 @@ class AuthService {
   static const String _keyUserWallet = 'user_wallet_balance';
   static const String _keyJwtToken = 'jwt_token';
 
+  static const MethodChannel _settingsChannel = MethodChannel('com.globalrun.app/settings');
+
   // Base URL backend Node.js REST API
   // 192.168.110.5 untuk perangkat fisik Android via Wi-Fi lokal, 10.0.2.2 untuk Android emulator, localhost untuk web/desktop
   static const String baseUrl = 'http://192.168.110.5:5000';
@@ -25,6 +28,13 @@ class AuthService {
   static String hashPassword(String password) {
     final bytes = utf8.encode(password);
     return sha256.convert(bytes).toString();
+  }
+
+  // Buka menu Pengaturan Keamanan / Sidik Jari di Android
+  Future<void> openDeviceSecuritySettings() async {
+    try {
+      await _settingsChannel.invokeMethod('openSecuritySettings');
+    } catch (_) {}
   }
 
   // Cek ketersediaan hardware sensor biometrik (Fingerprint/FaceID)
@@ -196,6 +206,7 @@ class AuthService {
 
       if (authenticated) {
         await prefs.setBool(_keyBiometricEnabled, true);
+        await prefs.setString('biometric_enrolled_at', DateTime.now().toIso8601String());
         return true;
       }
       return false;
@@ -204,6 +215,13 @@ class AuthService {
       await prefs.setBool(_keyBiometricEnabled, false);
       return true;
     }
+  }
+
+  // Hapus Data Sidik Jari dari Aplikasi (Reset Biometrik)
+  Future<void> removeBiometrics() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyBiometricEnabled, false);
+    await prefs.remove('biometric_enrolled_at');
   }
 
   // Cek Status Login Saat Buka Aplikasi
