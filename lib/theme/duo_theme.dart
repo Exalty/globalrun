@@ -385,6 +385,7 @@ class DuoCard extends StatelessWidget {
 class DuoChip extends StatelessWidget {
   final Widget? icon;
   final String label;
+  final Widget? trailing;
   final Color? backgroundColor;
   final Color? borderColor;
   final Color? textColor;
@@ -394,6 +395,7 @@ class DuoChip extends StatelessWidget {
     super.key,
     this.icon,
     required this.label,
+    this.trailing,
     this.backgroundColor,
     this.borderColor,
     this.textColor,
@@ -437,6 +439,10 @@ class DuoChip extends StatelessWidget {
               fontSize: 12,
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 6),
+            trailing!,
+          ],
         ],
       ),
     );

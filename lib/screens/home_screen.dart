@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/race_event.dart';
@@ -8,6 +10,7 @@ import '../services/timezone_service.dart';
 import '../services/currency_service.dart';
 import '../services/blockchain_service.dart';
 import '../services/ai_coach_service.dart';
+import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/event_service.dart';
 import 'active_race_screen.dart';
@@ -41,6 +44,35 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPartition = 0;
   static const int _eventsPerPage = 10;
 
+  // Saldo Dompet Atlet & Pengaturan Sembunyikan Saldo
+  double _userWalletUsd = 250.0;
+  bool _isBalanceHidden = false;
+  static const String _prefHideBalance = 'pref_hide_home_balance';
+
+  Future<void> _loadWalletAndPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final profile = await AuthService().getUserProfile();
+      if (mounted) {
+        setState(() {
+          _userWalletUsd = (profile['wallet'] as num?)?.toDouble() ?? 250.0;
+          _isBalanceHidden = prefs.getBool(_prefHideBalance) ?? false;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleBalanceVisibility() async {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _isBalanceHidden = !_isBalanceHidden;
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefHideBalance, _isBalanceHidden);
+    } catch (_) {}
+  }
+
   List<RaceEvent> _getFilteredEvents(List<RaceEvent> allEvents) {
     return allEvents.where((e) {
       final query = _searchQuery.toLowerCase();
@@ -55,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _loadWalletAndPrefs();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final eventService = context.read<EventService>();
@@ -537,7 +570,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => eventService.fetchEvents(forceRefresh: true),
+        onRefresh: () async {
+          await Future.wait([
+            eventService.fetchEvents(forceRefresh: true),
+            _loadWalletAndPrefs(),
+          ]);
+        },
         color: palette.primaryBlue,
         backgroundColor: palette.surface,
         child: SingleChildScrollView(
@@ -559,12 +597,30 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: DuoChip(
-                      icon: const Icon(Icons.account_balance_wallet_rounded, color: DuoColors.primaryBlue, size: 16),
-                      label: selectedCurrency,
-                      borderColor: DuoColors.primaryBlueShadow,
-                      backgroundColor: palette.surface,
-                      textColor: DuoColors.primaryBlue,
+                    child: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Builder(
+                          builder: (context) {
+                            final rate = currencyService.currencies[selectedCurrency] ?? currencyService.currencies['USD']!;
+                            final balanceFormatted = currencyService.formatCurrency(_userWalletUsd, selectedCurrency);
+                            final balanceDisplay = _isBalanceHidden ? '${rate.symbol} ••••••' : balanceFormatted;
+                            return DuoChip(
+                              icon: const Icon(Icons.account_balance_wallet_rounded, color: DuoColors.primaryBlue, size: 16),
+                              label: balanceDisplay,
+                              trailing: Icon(
+                                _isBalanceHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                color: DuoColors.primaryBlue.withOpacity(0.75),
+                                size: 14,
+                              ),
+                              borderColor: DuoColors.primaryBlueShadow,
+                              backgroundColor: palette.surface,
+                              textColor: DuoColors.primaryBlue,
+                              onTap: _toggleBalanceVisibility,
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
