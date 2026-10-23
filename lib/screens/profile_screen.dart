@@ -345,92 +345,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // 3. PENGATURAN TEMA APLIKASI (LIGHT MODE / DARK MODE)
             DuoCard(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: themeService.isDarkMode
+                              ? DuoColors.streakGold.withOpacity(0.18)
+                              : palette.primaryBlue.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          themeService.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                          color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: themeService.isDarkMode
-                                  ? DuoColors.streakGold.withOpacity(0.18)
-                                  : palette.primaryBlue.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Icon(
-                              themeService.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                              color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
-                              size: 22,
+                          Text(
+                            'TEMA TAMPILAN',
+                            style: TextStyle(
+                              color: palette.textPrimary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'TEMA TAMPILAN',
-                                style: TextStyle(
-                                  color: palette.textPrimary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                themeService.isDarkMode ? 'Mode Gelap (Dark Mode)' : 'Mode Terang (Light Mode)',
-                                style: TextStyle(
-                                  color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: 2),
+                          Text(
+                            themeService.isDarkMode ? 'Mode Gelap (Dark Mode)' : 'Mode Terang (Light Mode)',
+                            style: TextStyle(
+                              color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
-                      Switch(
-                        value: themeService.isDarkMode,
-                        activeColor: DuoColors.streakGold,
-                        inactiveThumbColor: palette.primaryBlue,
-                        inactiveTrackColor: palette.primaryBlue.withOpacity(0.3),
-                        onChanged: (bool isDark) {
-                          themeService.setDarkMode(isDark);
-                        },
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  // Segmented Chunky 3D Duolingo Button untuk Ganti Tema
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildThemeSelectButton(
-                          title: '🌙 MODE GELAP',
-                          isSelected: themeService.isDarkMode,
-                          palette: palette,
-                          onTap: () => themeService.setDarkMode(true),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildThemeSelectButton(
-                          title: '☀️ MODE TERANG',
-                          isSelected: !themeService.isDarkMode,
-                          palette: palette,
-                          onTap: () => themeService.setDarkMode(false),
-                        ),
-                      ),
-                    ],
+                  Switch(
+                    value: themeService.isDarkMode,
+                    activeColor: DuoColors.streakGold,
+                    inactiveThumbColor: palette.primaryBlue,
+                    inactiveTrackColor: palette.primaryBlue.withOpacity(0.3),
+                    onChanged: (bool isDark) {
+                      themeService.setDarkMode(isDark);
+                    },
                   ),
                 ],
               ),
@@ -878,51 +850,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 20),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThemeSelectButton({
-    required String title,
-    required bool isSelected,
-    required DuoColorPalette palette,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? palette.primaryBlue.withOpacity(palette.isDark ? 0.20 : 0.15)
-              : palette.background,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? palette.primaryBlue : palette.surfaceBorder,
-            width: 2.0,
-          ),
-          boxShadow: isSelected
-              ? []
-              : [
-                  BoxShadow(
-                    color: palette.surfaceShadow,
-                    offset: const Offset(0, 2),
-                    blurRadius: 0,
-                  ),
-                ],
-        ),
-        child: Center(
-          child: Text(
-            title,
-            style: TextStyle(
-              color: isSelected ? palette.primaryBlue : palette.textMuted,
-              fontWeight: FontWeight.w900,
-              fontSize: 11,
-              letterSpacing: 0.6,
-            ),
-          ),
         ),
       ),
     );
