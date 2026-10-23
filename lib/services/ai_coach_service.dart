@@ -492,7 +492,7 @@ BATASAN TOPIK:
     switch (bestTopic) {
       case 'pernapasan':
         return '''
-🌬️ **Tips Pernapasan untuk Atlet:**
+**Tips Pernapasan untuk Atlet:**
 
 1. **Rhythmic Breathing (2:2):** Hirup lewat hidung 2 langkah, hembuskan lewat mulut 2 langkah agar suplai oksigen stabil.
 2. **Intensitas Tinggi:** Beralih ke pola 2:1 (hirup 2 langkah, hembus 1 langkah).
@@ -500,24 +500,24 @@ BATASAN TOPIK:
 4. **Jangan Menahan Napas** saat menanjak atau sprint, karena memicu kelelahan dini dan kram diafragma.
 5. **Box Breathing:** Di luar sesi lari, latih pola 4-4-4-4 untuk meningkatkan kontrol napas.
 
-💡 Kalau terengah-engah, perlambat pace dan perpanjang hembusan napas.
+Catatan: Kalau terengah-engah, perlambat pace dan perpanjang hembusan napas.
 ''';
 
       case 'nutrisi':
         return '''
-🥗 **Rekomendasi Nutrisi Olahraga:**
+**Rekomendasi Nutrisi Olahraga:**
 
 1. **Pre-Workout (2-3 jam sebelum):** Karbohidrat kompleks + protein sedang. Contoh: nasi merah + telur + pisang.
 2. **Saat Berlari (>60 menit):** 30-60g karbohidrat per jam lewat energy gel, kurma, atau pisang.
 3. **Post-Workout (30-45 menit setelah):** Protein + karbohidrat rasio sekitar 1:3. Contoh: susu cokelat, dada ayam & nasi.
 4. **Jarak Anda $distStr km:** ${currentDistanceKm > 10 ? 'Untuk jarak panjang, lakukan carbo-loading 2-3 hari sebelum event.' : 'Untuk jarak ini, makanan ringan 1-2 jam sebelumnya sudah cukup.'}
 
-⚠️ Hindari makanan tinggi serat dan lemak 1-2 jam sebelum lari agar pencernaan aman.
+Perhatian: Hindari makanan tinggi serat dan lemak 1-2 jam sebelum lari agar pencernaan aman.
 ''';
 
       case 'hidrasi':
         return '''
-💧 **Panduan Hidrasi untuk Atlet:**
+**Panduan Hidrasi untuk Atlet:**
 
 1. **Sebelum:** Minum 400-600 ml air putih 2-3 jam sebelum aktivitas.
 2. **Selama:** 150-250 ml setiap 15-20 menit. Jangan tunggu haus.
@@ -525,12 +525,12 @@ BATASAN TOPIK:
 4. **Elektrolit:** Untuk aktivitas >60 menit atau cuaca panas, tambahkan elektrolit untuk mencegah hiponatremia.
 5. **Tanda Dehidrasi:** Urine gelap, pusing, kram otot, performa turun mendadak.
 
-💡 Air kelapa muda adalah sumber elektrolit alami yang baik untuk recovery.
+Catatan: Air kelapa muda adalah sumber elektrolit alami yang baik untuk recovery.
 ''';
 
       case 'pace_strategi':
         return '''
-⚡ **Taktik Pace & Strategi Balapan:**
+**Taktik Pace & Strategi Balapan:**
 
 - Kecepatan rata-rata Anda: **$speedStr km/h** (pace ~$paceStr mnt/km).
 - **Negative Split:** Paruh pertama 5-10% lebih lambat, lalu akselerasi di paruh kedua.
@@ -538,12 +538,12 @@ BATASAN TOPIK:
 - **Pembagian Race:** Awal konservatif, tengah stabil, 20% akhir akselerasi bertahap.
 - **Cadence Ideal:** 170-180 SPM.
 
-💡 Variasi pace lebih dari 15% dari target menandakan strategi yang belum matang.
+Catatan: Variasi pace lebih dari 15% dari target menandakan strategi yang belum matang.
 ''';
 
       case 'analisis_performa':
         return '''
-📊 **Analisis Performa Aktivitas Anda:**
+**Analisis Performa Aktivitas Anda:**
 
 | Metrik | Nilai |
 |---|---|
@@ -554,13 +554,13 @@ BATASAN TOPIK:
 | Durasi | **${(durationSeconds / 60).toStringAsFixed(1)} menit** |
 
 **Evaluasi:**
-${avgSpeedKmh > 12 ? '🔥 Pace di atas rata-rata, performa sprint sangat baik.' : avgSpeedKmh > 8 ? '✅ Pace stabil dan efisien untuk jarak menengah.' : avgSpeedKmh > 5 ? '👍 Ritme jogging yang baik. Naikkan bertahap 5-10% per minggu.' : '🏁 Awal yang baik! Konsistensi adalah kunci.'}
-${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toStringAsFixed(0)} SPM. ${cadenceVal > 170 ? 'Sudah optimal!' : 'Coba naikkan ke 170-180 SPM.'}' : ''}
+${avgSpeedKmh > 12 ? 'Pace di atas rata-rata, performa sprint sangat baik.' : avgSpeedKmh > 8 ? 'Pace stabil dan efisien untuk jarak menengah.' : avgSpeedKmh > 5 ? 'Ritme jogging yang baik. Naikkan bertahap 5-10% per minggu.' : 'Awal yang baik! Konsistensi adalah kunci.'}
+${steps > 0 && durationSeconds > 0 ? '\nCadence estimasi: ~${cadenceVal.toStringAsFixed(0)} SPM. ${cadenceVal > 170 ? 'Sudah optimal!' : 'Coba naikkan ke 170-180 SPM.'}' : ''}
 ''';
 
       case 'cedera':
         return '''
-⚠️ **Pencegahan & Penanganan Cedera:**
+**Pencegahan & Penanganan Cedera:**
 
 **Pencegahan:**
 - Pemanasan dinamis 5-10 menit sebelum lari.
@@ -576,12 +576,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 
 **Kram Otot:** Perlambat pace, peregangan ringan, dan asup elektrolit.
 
-🚨 Jika nyeri berlanjut >3 hari atau memburuk, segera periksa ke dokter.
+Perhatian: Jika nyeri berlanjut >3 hari atau memburuk, segera periksa ke dokter.
 ''';
 
       case 'pemanasan':
         return '''
-🔥 **Panduan Pemanasan yang Efektif:**
+**Panduan Pemanasan yang Efektif:**
 
 **Fase 1, Aktivasi (3-5 menit):** Jalan cepat lalu jogging ringan sampai denyut jantung 50-60% max HR.
 
@@ -594,12 +594,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 
 **Fase 3, Strides (2-3 menit):** Lari 50-80 m dengan akselerasi bertahap, 3-4 repetisi.
 
-⚠️ Hindari peregangan statis sebelum lari karena bisa menurunkan performa otot.
+Perhatian: Hindari peregangan statis sebelum lari karena bisa menurunkan performa otot.
 ''';
 
       case 'pendinginan':
         return '''
-❄️ **Panduan Pendinginan Pasca Latihan:**
+**Panduan Pendinginan Pasca Latihan:**
 
 **Fase 1 (5 menit):** Turunkan pace bertahap dari lari ke jogging ringan lalu jalan kaki.
 
@@ -607,12 +607,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 
 **Fase 3, Recovery Aktif:** Foam rolling 5-10 menit, minum air/elektrolit, dan makan snack protein dalam 30 menit.
 
-💡 Cool-down yang baik membantu mengurangi nyeri otot tertunda (DOMS).
+Catatan: Cool-down yang baik membantu mengurangi nyeri otot tertunda (DOMS).
 ''';
 
       case 'recovery':
         return '''
-🔄 **Panduan Recovery & Pemulihan:**
+**Panduan Recovery & Pemulihan:**
 
 1. **Rest Day:** Minimal 1-2 hari istirahat per minggu, karena otot beradaptasi saat istirahat.
 2. **Active Recovery:** Jalan kaki, yoga, atau renang santai di hari istirahat.
@@ -621,12 +621,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 5. **Foam Rolling & Stretching:** 10-15 menit setelah sesi.
 6. **Tanda Overtraining:** Performa turun, insomnia, denyut istirahat naik, mood swing, sering sakit. Kalau ada 3+ gejala, kurangi volume latihan.
 
-💡 Kamu menjadi kuat saat recovery, bukan saat latihan.
+Catatan: Kamu menjadi kuat saat recovery, bukan saat latihan.
 ''';
 
       case 'mental':
         return '''
-🧠 **Mental Toughness & Motivasi:**
+**Mental Toughness & Motivasi:**
 
 1. **Goal SMART:** Target yang spesifik, terukur, realistis, relevan, dan punya batas waktu.
 2. **Visualisasi:** Bayangkan dirimu berlari dengan ritme sempurna sampai garis finish.
@@ -635,12 +635,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 5. **Rutinitas Pre-Race:** Ritual konsisten sebelum race untuk menurunkan kecemasan.
 6. **Bedakan** ketidaknyamanan latihan dengan nyeri cedera.
 
-💪 Percaya pada proses latihanmu!
+Percaya pada proses latihanmu!
 ''';
 
       case 'sepatu_gear':
         return '''
-👟 **Panduan Perlengkapan Olahraga:**
+**Panduan Perlengkapan Olahraga:**
 
 **Sepatu Lari:**
 - Ganti setiap 500-800 km pemakaian.
@@ -651,12 +651,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 
 **Aksesori:** GPS watch, headphone bone conduction, dan reflective vest untuk lari malam/subuh.
 
-💡 Sepatu yang tepat lebih penting daripada gadget mahal.
+Catatan: Sepatu yang tepat lebih penting daripada gadget mahal.
 ''';
 
       case 'tidur':
         return '''
-😴 **Tidur & Performa Atletik:**
+**Tidur & Performa Atletik:**
 
 1. **Durasi:** 7-9 jam per malam.
 2. **Sleep Hygiene:** Jam tidur konsisten, kamar sejuk (18-20°C), hindari layar gadget 30-60 menit sebelum tidur, hindari kafein setelah jam 14:00.
@@ -664,12 +664,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 4. **Dampak Kurang Tidur:** Endurance turun, waktu reaksi melambat, risiko cedera naik.
 5. **Pre-Race:** Tidur malam H-2 sama pentingnya dengan malam H-1.
 
-💡 Tidur adalah suplemen gratis paling kuat untuk atlet.
+Catatan: Tidur adalah suplemen gratis paling kuat untuk atlet.
 ''';
 
       case 'berat_badan':
         return '''
-⚖️ **Manajemen Berat Badan untuk Atlet:**
+**Manajemen Berat Badan untuk Atlet:**
 
 1. **Fokus pada komposisi tubuh**, bukan hanya angka timbangan.
 2. **Menurunkan Berat:** Defisit kalori moderat sekitar 300-500 kkal/hari. Terlalu cepat berisiko kehilangan massa otot dan performa.
@@ -678,12 +678,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 5. **Timing Makan:** Makan besar 2-3 jam sebelum latihan, snack ringan 30-60 menit sebelumnya.
 6. **Monitoring:** Timbang pagi hari dan rata-ratakan per minggu.
 
-💡 Untuk target berat badan yang spesifik, konsultasikan dengan ahli gizi.
+Catatan: Untuk target berat badan yang spesifik, konsultasikan dengan ahli gizi.
 ''';
 
       case 'heart_rate':
         return '''
-❤️ **Panduan Heart Rate Zone:**
+**Panduan Heart Rate Zone:**
 
 **Estimasi Max HR:** 220 dikurangi usia (rumus umum).
 
@@ -697,12 +697,12 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 
 **Praktisnya:** Sekitar 80% latihan di Zona 2 dan 20% di Zona 3-5. Denyut istirahat yang menurun seiring waktu menandakan kebugaran membaik.
 
-💡 Chest strap lebih akurat dibanding sensor optik di pergelangan untuk interval.
+Catatan: Chest strap lebih akurat dibanding sensor optik di pergelangan untuk interval.
 ''';
 
       case 'program_latihan':
         return '''
-📋 **Panduan Program Latihan Lari:**
+**Panduan Program Latihan Lari:**
 
 **Pemula (0-5K):** 3x per minggu, run/walk interval lalu progresif ke lari non-stop.
 
@@ -713,15 +713,15 @@ ${steps > 0 && durationSeconds > 0 ? '\n📐 Cadence estimasi: ~${cadenceVal.toS
 - Aturan 80/20: 80% easy, 20% intens.
 - Periodisasi: base, build, peak, taper.
 
-💡 Konsistensi lebih penting daripada intensitas.
+Catatan: Konsistensi lebih penting daripada intensitas.
 ''';
 
       case 'cadence_teknik':
         return '''
-🦶 **Teknik Lari & Cadence:**
+**Teknik Lari & Cadence:**
 
 **Cadence Optimal:** 170-180 SPM.
-${steps > 0 && durationSeconds > 0 ? '📊 Cadence Anda saat ini: ~${cadenceVal.toStringAsFixed(0)} SPM. ${cadenceVal >= 170 ? '✅ Sudah optimal!' : '⬆️ Coba langkah lebih pendek dan cepat.'}' : ''}
+${steps > 0 && durationSeconds > 0 ? 'Cadence Anda saat ini: ~${cadenceVal.toStringAsFixed(0)} SPM. ${cadenceVal >= 170 ? 'Sudah optimal!' : 'Coba langkah lebih pendek dan cepat.'}' : ''}
 
 **Form:**
 1. **Postur:** Tegak, sedikit condong ke depan dari ankle.
@@ -730,12 +730,12 @@ ${steps > 0 && durationSeconds > 0 ? '📊 Cadence Anda saat ini: ~${cadenceVal.
 4. **Pandangan:** 10-20 meter ke depan.
 5. **Hindari overstriding:** kaki mendarat di bawah pusat massa.
 
-💡 Drill A-skip, B-skip, dan high knees 2-3x per minggu membantu koordinasi.
+Catatan: Drill A-skip, B-skip, dan high knees 2-3x per minggu membantu koordinasi.
 ''';
 
       case 'interval':
         return '''
-⏱️ **Latihan Interval & Threshold:**
+**Latihan Interval & Threshold:**
 
 1. **Short Intervals (200-400 m):** Speed work, 6-10 repetisi, istirahat 1:2.
 2. **Long Intervals (800-1600 m):** VO2max, 4-6 repetisi, istirahat 1:1.
@@ -745,12 +745,12 @@ ${steps > 0 && durationSeconds > 0 ? '📊 Cadence Anda saat ini: ~${cadenceVal.
 **Contoh:** 5x1000 m di pace 5K dengan jogging 3 menit.
 
 Jangan lakukan interval dua hari berturut-turut.
-${avgSpeedKmh > 0 ? '\n📊 Dengan pace Anda ($paceStr mnt/km), target interval sekitar ${(pace * 0.85).toStringAsFixed(1)} mnt/km.' : ''}
+${avgSpeedKmh > 0 ? '\nDengan pace Anda ($paceStr mnt/km), target interval sekitar ${(pace * 0.85).toStringAsFixed(1)} mnt/km.' : ''}
 ''';
 
       case 'jarak_kategori':
         return '''
-🏃 **Perbedaan Lari 10K, 15K, dan 50K (Ultra):**
+**Perbedaan Lari 10K, 15K, dan 50K (Ultra):**
 
 1. **10K:** Intensitas cukup tinggi (Zona 3-4). Energi dominan glikogen, gel biasanya opsional. Kunci: pace stabil dan toleransi laktat.
 2. **15K:** Intensitas menengah (Zona 2-3). Cadangan glikogen mulai terkuras, disarankan 1-2 gel dan hidrasi teratur. Kunci: pacing disiplin.
@@ -759,11 +759,11 @@ ${avgSpeedKmh > 0 ? '\n📊 Dengan pace Anda ($paceStr mnt/km), target interval 
 
       default:
         return '''
-🏃‍♂️ **Coach Virtual, Ringkasan Aktivitas:**
+**Coach Virtual, Ringkasan Aktivitas:**
 Jarak: **$distStr km** | Langkah: **$steps** | Pace: **$paceStr mnt/km** | Speed: **$speedStr km/h**
 
-💡 **Tips:**
-${currentDistanceKm > 10 ? '🔥 Jarak panjang! Pastikan hidrasi tiap 15-20 menit dan asupan karbohidrat per jam.' : currentDistanceKm > 5 ? '👍 Jarak menengah! Fokus pada ritme napas dan pace konsisten.' : '🏁 Lanjutkan dengan konsisten dan fokus pada form serta napas rileks.'}
+**Tips:**
+${currentDistanceKm > 10 ? 'Jarak panjang! Pastikan hidrasi tiap 15-20 menit dan asupan karbohidrat per jam.' : currentDistanceKm > 5 ? 'Jarak menengah! Fokus pada ritme napas dan pace konsisten.' : 'Lanjutkan dengan konsisten dan fokus pada form serta napas rileks.'}
 
 Tanyakan topik spesifik, misalnya pernapasan, interval, pemanasan, recovery, heart rate zone, atau program latihan.
 ''';

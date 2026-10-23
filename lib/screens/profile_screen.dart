@@ -227,7 +227,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       DuoChip(
-                        icon: const Text('🔥', style: TextStyle(fontSize: 14)),
                         label: 'LEVEL 5 ATLET',
                         borderColor: DuoColors.streakGoldShadow,
                         backgroundColor: palette.background,
@@ -294,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Text('💎', style: TextStyle(fontSize: 26)),
+                      const Icon(Icons.account_balance_wallet_rounded, color: DuoColors.streakGold, size: 28),
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,7 +518,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        '📊 ${currencyService.getRateLabel(selectedCurrency)}',
+                        currencyService.getRateLabel(selectedCurrency),
                         style: const TextStyle(color: DuoColors.questGreen, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -580,7 +579,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        '🌍 ${selectedTimezone.label} • ${timezoneService.getOffsetLabel(selectedTimezone)}',
+                        '${selectedTimezone.label} • ${timezoneService.getOffsetLabel(selectedTimezone)}',
                         style: const TextStyle(color: DuoColors.questGreen, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),

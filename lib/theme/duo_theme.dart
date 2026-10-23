@@ -383,7 +383,7 @@ class DuoCard extends StatelessWidget {
 
 /// Chip Gamifikasi Kapsul khas Duolingo yang otomatis menyesuaikan tema.
 class DuoChip extends StatelessWidget {
-  final Widget icon;
+  final Widget? icon;
   final String label;
   final Color? backgroundColor;
   final Color? borderColor;
@@ -392,7 +392,7 @@ class DuoChip extends StatelessWidget {
 
   const DuoChip({
     super.key,
-    required this.icon,
+    this.icon,
     required this.label,
     this.backgroundColor,
     this.borderColor,
@@ -425,8 +425,10 @@ class DuoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          icon,
-          const SizedBox(width: 6),
+          if (icon != null) ...[
+            icon!,
+            const SizedBox(width: 6),
+          ],
           Text(
             label,
             style: TextStyle(

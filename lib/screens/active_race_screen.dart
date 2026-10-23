@@ -54,8 +54,8 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
 
     // Trigger mobile push notification for race start
     NotificationService().showNotification(
-      title: '🏁 Race Berlangsung: ${widget.event.title}',
-      body: 'Modul GPS & Sensor Anti-Cheat aktif. Jaga ritme langkahmu menuju garis finish!',
+      title: 'Race Berlangsung: ${widget.event.title}',
+      body: 'Modul GPS & Sensor Anti-Cheat aktif. Jaga ritme langkahmu menuju garis finish.',
       type: 'flag_off',
     );
 
@@ -97,7 +97,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
 
     // Trigger mobile push & in-app notification for finish & NFT minted
     NotificationService().showNotification(
-      title: '🎉 Finish Terverifikasi: ${widget.event.title}!',
+      title: 'Finish Terverifikasi: ${widget.event.title}',
       body: 'Selamat! Total jarak ${location.totalDistanceKm.toStringAsFixed(2)} KM tervalidasi. Medali NFT Blok #${mintedBlock.index} tersimpan di blockchain.',
       type: 'achievement',
       payload: 'open_nft',
@@ -134,7 +134,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
               _buildDialogRow('Waktu', '${(_elapsedSeconds / 60).toStringAsFixed(1)} menit'),
               _buildDialogRow('Speed Rata-rata', '${block.avgSpeedKmh.toStringAsFixed(1)} km/h'),
               const Divider(color: Colors.white24, height: 20),
-              const Text('🔗 Blockchain Minting Success:', style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+              const Text('Blockchain Minting Success:', style: TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 13)),
               const SizedBox(height: 4),
               Text('Blok #${block.index} Hash: ${block.hash.substring(0, 24)}...', style: const TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'monospace')),
             ],
