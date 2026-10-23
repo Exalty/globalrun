@@ -5,12 +5,13 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 class MotionSensorService extends ChangeNotifier {
   StreamSubscription<UserAccelerometerEvent>? _accelSubscription;
-  
+
   int _stepCount = 0;
   double _currentMagnitude = 0.0;
   String _motionState = 'Diam (Stationary)';
   bool _isListening = false;
   bool _isSimulating = false;
+  bool _isPaused = false;
   Timer? _simulationTimer;
 
   // Peak detection state
@@ -22,6 +23,7 @@ class MotionSensorService extends ChangeNotifier {
   String get motionState => _motionState;
   bool get isListening => _isListening;
   bool get isSimulating => _isSimulating;
+  bool get isPaused => _isPaused;
 
   void startTracking({bool simulationMode = false}) {
     if (_isListening) return;
@@ -36,26 +38,46 @@ class MotionSensorService extends ChangeNotifier {
     try {
       _accelSubscription = userAccelerometerEventStream().listen(
         (UserAccelerometerEvent event) {
-          final magnitude = sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
+          final magnitude =
+              sqrt(event.x * event.x + event.y * event.y + event.z * event.z);
           _processSensorReading(magnitude);
         },
         onError: (err) {
-          // If real sensor fails (e.g. desktop environment), fallback to smooth mock/simulation automatically
-          debugPrint('Sensor not available or platform error: $err. Switching to simulated tracking.');
-          _startSimulation();
+          debugPrint('Sensor error: $err');
+          // Langkah palsu hanya boleh di debug build
+          if (kDebugMode) _startSimulation();
         },
       );
     } catch (e) {
-      _startSimulation();
+      if (kDebugMode) _startSimulation();
     }
 
+    notifyListeners();
+  }
+
+  /// Dipakai tombol "Simulasi Test" (startTracking() return jika sudah listening).
+  void enableSimulation() {
+    if (_isSimulating) return;
+    _accelSubscription?.cancel();
+    _accelSubscription = null;
+    _isListening = true;
+    _startSimulation();
+    notifyListeners();
+  }
+
+  void pause() {
+    _isPaused = true;
+    notifyListeners();
+  }
+
+  void resume() {
+    _isPaused = false;
     notifyListeners();
   }
 
   void _processSensorReading(double magnitude) {
     _currentMagnitude = magnitude;
 
-    // Categorize motion
     if (magnitude < 1.2) {
       _motionState = 'Santai / Diam';
     } else if (magnitude < 3.5) {
@@ -66,13 +88,15 @@ class MotionSensorService extends ChangeNotifier {
       _motionState = 'Sprint Cepat!';
     }
 
-    // Step detection logic: peak crossing above threshold with cooldown
-    final now = DateTime.now();
-    const threshold = 2.4;
-    if (magnitude > threshold && _lastMagnitude <= threshold) {
-      if (now.difference(_lastStepTime).inMilliseconds > 260) {
-        _stepCount++;
-        _lastStepTime = now;
+    // Deteksi langkah: peak di atas threshold + cooldown. Tidak dihitung saat pause.
+    if (!_isPaused) {
+      final now = DateTime.now();
+      const threshold = 2.4;
+      if (magnitude > threshold && _lastMagnitude <= threshold) {
+        if (now.difference(_lastStepTime).inMilliseconds > 260) {
+          _stepCount++;
+          _lastStepTime = now;
+        }
       }
     }
     _lastMagnitude = magnitude;
@@ -82,25 +106,26 @@ class MotionSensorService extends ChangeNotifier {
   void _startSimulation() {
     _isSimulating = true;
     _simulationTimer?.cancel();
+    final rand = Random();
     _simulationTimer = Timer.periodic(const Duration(milliseconds: 350), (timer) {
-      final rand = Random();
-      // Generate realistic running acceleration magnitude
-      final mag = 1.8 + rand.nextDouble() * 3.5;
-      _processSensorReading(mag);
+      _processSensorReading(1.8 + rand.nextDouble() * 3.5);
     });
   }
 
   void stopTracking() {
     _accelSubscription?.cancel();
+    _accelSubscription = null;
     _simulationTimer?.cancel();
     _isListening = false;
     _isSimulating = false;
+    _isPaused = false;
     notifyListeners();
   }
 
   void resetSteps() {
     _stepCount = 0;
     _currentMagnitude = 0.0;
+    _lastMagnitude = 0.0;
     _motionState = 'Diam (Stationary)';
     notifyListeners();
   }

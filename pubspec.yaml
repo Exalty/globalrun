@@ -46,11 +46,14 @@ dependencies:
   flutter_local_notifications: ^22.3.2
   flutter_dotenv: ^6.0.1
   url_launcher: ^6.3.3
+
   supabase_flutter: ^2.18.3
+  flutter_compass: ^0.8.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
