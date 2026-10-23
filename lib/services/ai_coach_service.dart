@@ -28,9 +28,10 @@ class AiCoachService {
   /// Urutan model yang dicoba. Cek daftar model terbaru di dokumentasi
   /// Gemini API karena nama model bisa berubah.
   static const List<String> _candidateModels = [
+    'gemini-3.5-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash',
     'gemini-3.8-flash',
-    'gemini-3.7-flash',
-    'gemini-flash-latest',
   ];
 
   AiCoachService({this.apiKey});
@@ -102,7 +103,10 @@ BATASAN TOPIK:
         'Langkah: $steps | '
         'Cadence: $cadence SPM';
 
-    final key = apiKey?.trim() ?? '';
+    var key = apiKey?.trim() ?? '';
+    if (key.startsWith('"') && key.endsWith('"') && key.length > 2) {
+      key = key.substring(1, key.length - 1).trim();
+    }
     final hasValidKey = key.length > 10 && !key.contains('ISI_API_KEY');
 
     if (!hasValidKey) {
@@ -217,7 +221,7 @@ BATASAN TOPIK:
               },
               body: body,
             )
-            .timeout(const Duration(seconds: 30));
+            .timeout(const Duration(seconds: 12));
 
         if (res.statusCode == 200) {
           final json = jsonDecode(res.body);

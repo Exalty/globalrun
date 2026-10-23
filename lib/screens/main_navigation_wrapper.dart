@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/blockchain_service.dart';
 import '../services/ai_coach_service.dart';
+import '../theme/duo_theme.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'feedback_screen.dart';
@@ -24,7 +25,6 @@ class MainNavigationWrapper extends StatefulWidget {
 class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   int _currentIndex = 0;
 
-
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
@@ -37,38 +37,98 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     ];
 
     return Scaffold(
+      backgroundColor: DuoColors.background,
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF1E293B),
-          border: Border(top: BorderSide(color: Colors.white12, width: 0.8)),
+          color: DuoColors.surface,
+          border: Border(
+            top: BorderSide(color: DuoColors.surfaceBorder, width: 2.0),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF070B12),
+              offset: Offset(0, -3),
+              blurRadius: 6,
+            ),
+          ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          backgroundColor: const Color(0xFF1E293B),
-          selectedItemColor: Colors.cyanAccent,
-          unselectedItemColor: Colors.white54,
-          selectedFontSize: 12,
-          unselectedFontSize: 12,
-          type: BottomNavigationBarType.fixed,
-          onTap: (index) {
-            setState(() => _currentIndex = index);
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'Beranda',
+        padding: const EdgeInsets.only(top: 8, bottom: 12, left: 16, right: 16),
+        child: SafeArea(
+          top: false,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildDuoNavItem(
+                index: 0,
+                icon: Icons.sports_score_rounded,
+                activeIcon: Icons.sports_score_rounded,
+                label: 'LOMBA',
+              ),
+              _buildDuoNavItem(
+                index: 1,
+                icon: Icons.rate_review_outlined,
+                activeIcon: Icons.rate_review_rounded,
+                label: 'SARAN',
+              ),
+              _buildDuoNavItem(
+                index: 2,
+                icon: Icons.face_rounded,
+                activeIcon: Icons.face_rounded,
+                label: 'PROFIL',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDuoNavItem({
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final bool isSelected = _currentIndex == index;
+
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = index),
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? DuoColors.primaryBlue.withOpacity(0.16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? DuoColors.primaryBlue : Colors.transparent,
+            width: 2.0,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? activeIcon : icon,
+              size: 24,
+              color: isSelected ? DuoColors.primaryBlue : DuoColors.textMuted,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.rate_review_rounded),
-              label: 'Saran & Kesan',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'Profil',
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.6,
+                color: isSelected ? DuoColors.primaryBlue : DuoColors.textMuted,
+              ),
             ),
           ],
         ),
@@ -76,4 +136,3 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     );
   }
 }
-

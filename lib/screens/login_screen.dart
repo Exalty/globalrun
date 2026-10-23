@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../theme/duo_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -12,7 +13,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
-  // Tidak ada dummy email/password; form kosong untuk pendaftaran/login manual
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
@@ -104,28 +104,28 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Terjadi kesalahan sistem: $e');
+      setState(() => _errorMessage = 'Terjadi kesalahan: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _handleBiometricLogin() async {
-    // Cek apakah pengguna sudah mengaktifkan biometrik di menu Profil
-    final isConfigured = await _authService.isBiometricEnabled();
-
-    if (!isConfigured) {
-      _showBiometricNotConfiguredDialog();
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final success = await _authService.loginWithBiometrics();
+      final configured = await _authService.isBiometricEnabled();
+      if (!configured) {
+        _showBiometricNotConfiguredDialog();
+        return;
+      }
+
+      final success = await _authService.authenticateWithBiometrics();
       if (success) {
         widget.onLoginSuccess();
       } else {
@@ -142,27 +142,27 @@ class _LoginScreenState extends State<LoginScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: DuoColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: DuoColors.surfaceBorder, width: 2),
+        ),
         title: const Row(
           children: [
-            Icon(Icons.fingerprint_rounded, color: Colors.cyanAccent),
+            Icon(Icons.fingerprint_rounded, color: DuoColors.primaryBlue, size: 28),
             SizedBox(width: 10),
-            Text('Biometrik Belum Aktif', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Biometrik Belum Aktif', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
           ],
         ),
         content: const Text(
-          'Login sidik jari belum dinyalakan untuk akun ini.\n\nSilakan masuk terlebih dahulu menggunakan email dan password, lalu nyalakan "Login Sidik Jari" di menu Profil.',
-          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          'Login sidik jari belum dinyalakan untuk akun ini.\n\nSilakan masuk terlebih dahulu menggunakan email dan password, lalu nyalakan saklar "Sidik Jari" di menu Profil.',
+          style: TextStyle(color: DuoColors.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
-          ElevatedButton(
+          DuoButton(
+            text: 'MENGERTI',
+            height: 44,
             onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.cyanAccent,
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Mengerti'),
           ),
         ],
       ),
@@ -172,231 +172,209 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: DuoColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo Icon
+                // Duolingo-style 3D Mascot/Icon Badge
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  width: 90,
+                  height: 90,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Colors.cyanAccent, Colors.blueAccent],
-                    ),
-                    boxShadow: [
+                    color: DuoColors.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: DuoColors.primaryBlue, width: 3),
+                    boxShadow: const [
                       BoxShadow(
-                        color: Colors.cyanAccent.withOpacity(0.3),
-                        blurRadius: 20,
-                        spreadRadius: 2,
+                        color: DuoColors.primaryBlueShadow,
+                        offset: Offset(0, 5),
+                        blurRadius: 0,
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.directions_run_rounded,
-                    size: 54,
-                    color: Color(0xFF0F172A),
+                  child: const Center(
+                    child: Icon(
+                      Icons.directions_run_rounded,
+                      size: 54,
+                      color: DuoColors.primaryBlue,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
+
                 const Text(
-                  'GLOBAL VIRTUAL RACE',
+                  'GLOBAL RUN',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 22,
-                    letterSpacing: 2,
+                    fontSize: 24,
+                    letterSpacing: 1.8,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _isRegisterMode ? 'Daftar akun atlet baru secara manual' : 'Masuk untuk sinkronisasi lomba & leaderboard',
-                  style: const TextStyle(color: Colors.white60, fontSize: 13),
+                  _isRegisterMode
+                      ? 'Daftarkan atlet baru dan mulai petualangan lari!'
+                      : 'Masuk dan taklukkan leaderboard kompetisi!',
+                  style: const TextStyle(color: DuoColors.textSecondary, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
-                // Form Container
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white12),
-                  ),
+                // DuoCard Form Container
+                DuoCard(
+                  padding: const EdgeInsets.all(22),
                   child: Column(
                     children: [
-                      if (_isRegisterMode) ...[
-                        TextField(
-                          controller: _nameController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Nama Lengkap',
-                            hintText: 'Contoh: Bima Perkasa',
-                            hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
-                            labelStyle: const TextStyle(color: Colors.white60),
-                            prefixIcon: const Icon(Icons.person_rounded, color: Colors.cyanAccent),
-                            filled: true,
-                            fillColor: const Color(0xFF0F172A),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide.none,
+                      // Mode Selector Pill (Masuk / Daftar)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: DuoColors.background,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: DuoColors.surfaceBorder, width: 1.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildModeTab(
+                                title: 'MASUK',
+                                isActive: !_isRegisterMode,
+                                onTap: () {
+                                  if (_isRegisterMode) {
+                                    setState(() {
+                                      _isRegisterMode = false;
+                                      _errorMessage = null;
+                                    });
+                                  }
+                                },
+                              ),
                             ),
-                          ),
+                            Expanded(
+                              child: _buildModeTab(
+                                title: 'DAFTAR',
+                                isActive: _isRegisterMode,
+                                onTap: () {
+                                  if (!_isRegisterMode) {
+                                    setState(() {
+                                      _isRegisterMode = true;
+                                      _errorMessage = null;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
+                      ),
+                      const SizedBox(height: 20),
+
+                      if (_isRegisterMode) ...[
+                        _buildTextField(
+                          controller: _nameController,
+                          label: 'Nama Lengkap',
+                          hint: 'Contoh: Bima Perkasa',
+                          icon: Icons.person_rounded,
+                        ),
+                        const SizedBox(height: 14),
                       ],
-                      TextField(
+
+                      _buildTextField(
                         controller: _emailController,
-                        style: const TextStyle(color: Colors.white),
+                        label: 'Email',
+                        hint: 'contoh@domain.com',
+                        icon: Icons.alternate_email_rounded,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'contoh@domain.com',
-                          hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
-                          labelStyle: const TextStyle(color: Colors.white60),
-                          prefixIcon: const Icon(Icons.email_rounded, color: Colors.cyanAccent),
-                          filled: true,
-                          fillColor: const Color(0xFF0F172A),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
+                      const SizedBox(height: 14),
+
+                      _buildTextField(
                         controller: _passwordController,
+                        label: 'Password',
+                        hint: '••••••••',
+                        icon: Icons.lock_outline_rounded,
                         obscureText: true,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          labelStyle: const TextStyle(color: Colors.white60),
-                          prefixIcon: const Icon(Icons.lock_rounded, color: Colors.cyanAccent),
-                          filled: true,
-                          fillColor: const Color(0xFF0F172A),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
                       ),
+
                       if (_errorMessage != null) ...[
                         const SizedBox(height: 14),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.redAccent.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
+                            color: DuoColors.heartRed.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: DuoColors.heartRed, width: 1.5),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.error_outline_rounded, color: DuoColors.heartRed, size: 20),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
-                                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                                  style: const TextStyle(
+                                    color: DuoColors.heartRed,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ],
-                      const SizedBox(height: 24),
 
-                      // Tombol Submit Manual (Register / Login)
-                      SizedBox(
+                      const SizedBox(height: 22),
+
+                      // Tombol Submit 3D Duolingo
+                      DuoButton(
+                        text: _isRegisterMode ? 'DAFTAR SEKARANG' : 'MASUK DENGAN SANDI',
                         width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handlePasswordSubmit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.cyanAccent,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                                )
-                              : Text(
-                                  _isRegisterMode ? 'DAFTAR SEKARANG' : 'MASUK DENGAN SANDI',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 1),
-                                ),
-                        ),
+                        isLoading: _isLoading,
+                        onPressed: _handlePasswordSubmit,
                       ),
 
-                      // Tombol Biometrik Fingerprint (Hanya di mode Login)
+                      // Tombol Sidik Jari (Biometrik) di mode Login
                       if (!_isRegisterMode && _canUseBiometrics) ...[
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            const Expanded(child: Divider(color: Colors.white24)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text('ATAU', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
+                            const Expanded(child: Divider(color: DuoColors.surfaceBorder, thickness: 1.5)),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'ATAU',
+                                style: TextStyle(
+                                  color: DuoColors.textMuted,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                             ),
-                            const Expanded(child: Divider(color: Colors.white24)),
+                            const Expanded(child: Divider(color: DuoColors.surfaceBorder, thickness: 1.5)),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: _isLoading ? null : _handleBiometricLogin,
+
+                        DuoButton(
+                          text: _isBiometricConfigured ? 'LOGIN SIDIK JARI' : 'SIDIK JARI (BELUM AKTIF)',
+                          backgroundColor: DuoColors.secondaryButton,
+                          shadowColor: DuoColors.secondaryButtonShadow,
+                          textColor: _isBiometricConfigured ? DuoColors.primaryBlue : DuoColors.textMuted,
+                          width: double.infinity,
                           icon: Icon(
                             Icons.fingerprint_rounded,
-                            color: _isBiometricConfigured ? Colors.cyanAccent : Colors.white38,
-                            size: 28,
+                            color: _isBiometricConfigured ? DuoColors.primaryBlue : DuoColors.textMuted,
+                            size: 24,
                           ),
-                          label: Text(
-                            _isBiometricConfigured
-                                ? 'Masuk Sidik Jari (Biometrik)'
-                                : 'Masuk Sidik Jari (Belum Aktif)',
-                            style: TextStyle(
-                              color: _isBiometricConfigured ? Colors.white : Colors.white60,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                            side: BorderSide(
-                              color: _isBiometricConfigured ? Colors.cyanAccent : Colors.white24,
-                            ),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
+                          onPressed: _isLoading ? null : _handleBiometricLogin,
                         ),
                       ],
                     ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-                // Toggle Login / Register Mode
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _isRegisterMode = !_isRegisterMode;
-                      _errorMessage = null;
-                    });
-                  },
-                  child: RichText(
-                    text: TextSpan(
-                      text: _isRegisterMode ? 'Sudah memiliki akun? ' : 'Belum punya akun kompetisi? ',
-                      style: const TextStyle(color: Colors.white60, fontSize: 13),
-                      children: [
-                        TextSpan(
-                          text: _isRegisterMode ? 'Masuk di sini' : 'Daftar sekarang',
-                          style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ],
@@ -404,6 +382,86 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildModeTab({
+    required String title,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? DuoColors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isActive ? DuoColors.primaryBlue.withOpacity(0.5) : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isActive ? DuoColors.primaryBlue : DuoColors.textMuted,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            color: DuoColors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: DuoColors.textMuted, fontSize: 13),
+            prefixIcon: Icon(icon, color: DuoColors.primaryBlue, size: 20),
+            filled: true,
+            fillColor: DuoColors.background,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: DuoColors.surfaceBorder, width: 2),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: DuoColors.primaryBlue, width: 2),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

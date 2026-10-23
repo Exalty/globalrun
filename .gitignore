@@ -33,6 +33,7 @@ yarn-error.log*
 .pub-cache/
 .pub/
 /build/
+/build_old/
 /coverage/
 
 # Symbolication related

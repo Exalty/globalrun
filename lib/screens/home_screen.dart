@@ -12,6 +12,7 @@ import 'blockchain_certificate_screen.dart';
 import 'mini_game_screen.dart';
 import 'ai_coach_screen.dart';
 import 'notification_screen.dart';
+import '../theme/duo_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   final BlockchainService blockchainService;
@@ -219,17 +220,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final selectedCurrency = currencyService.selectedCurrency;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: DuoColors.background,
       appBar: AppBar(
         title: const Row(
           children: [
-            Icon(Icons.directions_run_rounded, color: Colors.cyanAccent),
+            Icon(Icons.directions_run_rounded, color: DuoColors.primaryBlue, size: 28),
             SizedBox(width: 8),
-            Text('Global Virtual Race', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'GLOBAL RUN',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 18),
+            ),
           ],
         ),
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: DuoColors.surface,
         elevation: 0,
+        shape: const Border(bottom: BorderSide(color: DuoColors.surfaceBorder, width: 2)),
         actions: [
           IconButton(
             icon: const Icon(Icons.videogame_asset_rounded, color: Colors.amberAccent),
@@ -310,18 +315,43 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Quick Global Converters Card (Timezone & Currency)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
+            // Duolingo Top Gamification Chips Bar
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                children: [
+                  DuoChip(
+                    icon: const Text('🔥', style: TextStyle(fontSize: 14)),
+                    label: '5 HARI',
+                    borderColor: DuoColors.streakGoldShadow,
+                    backgroundColor: DuoColors.surface,
+                    textColor: DuoColors.streakGold,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DuoChip(
+                      icon: const Text('💎', style: TextStyle(fontSize: 14)),
+                      label: selectedCurrency,
+                      borderColor: DuoColors.primaryBlueShadow,
+                      backgroundColor: DuoColors.surface,
+                      textColor: DuoColors.primaryBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  DuoChip(
+                    icon: Text(selectedTimezone.flag, style: const TextStyle(fontSize: 14)),
+                    label: selectedTimezone.code,
+                    borderColor: DuoColors.surfaceBorder,
+                    backgroundColor: DuoColors.surface,
+                    textColor: Colors.white,
+                  ),
+                ],
               ),
+            ),
+
+            // Quick Global Converters Card (Timezone & Currency)
+            DuoCard(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -508,11 +538,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // Feature Quick Actions (AI Coach & Mini Game)
+            // Feature Quick Actions (AI Coach & Mini Game - Duo 3D)
             Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
+                  child: DuoCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     onTap: () {
                       Navigator.push(
                         context,
@@ -523,58 +554,43 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.cyanAccent.withOpacity(0.4)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.smart_toy_rounded, color: Colors.cyanAccent, size: 28),
-                          SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('AI Coach', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              Text('Nutrisi & Taktik', style: TextStyle(color: Colors.white60, fontSize: 11)),
-                            ],
-                          ),
-                        ],
-                      ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.smart_toy_rounded, color: DuoColors.primaryBlue, size: 28),
+                        SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('AI COACH', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+                            Text('Nutrisi & Taktik', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: GestureDetector(
+                  child: DuoCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const MiniGameScreen()),
                       );
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.amberAccent.withOpacity(0.4)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.sports_esports_rounded, color: Colors.amberAccent, size: 28),
-                          SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Mini-Game', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              Text('Endless Runner', style: TextStyle(color: Colors.white60, fontSize: 11)),
-                            ],
-                          ),
-                        ],
-                      ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.sports_esports_rounded, color: DuoColors.streakGold, size: 28),
+                        SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('MINI GAME', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
+                            Text('Endless Runner', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -583,26 +599,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // Fasilitas Pencarian Lomba (Search Bar)
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white12),
-              ),
+            // Fasilitas Pencarian Lomba (Search Bar - Duo 3D)
+            DuoCard(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                 onChanged: (val) {
                   setState(() => _searchQuery = val);
                 },
                 decoration: InputDecoration(
                   hintText: 'Cari lomba (misal: Tokyo, 5K, Fun Run)...',
-                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.cyanAccent),
+                  hintStyle: const TextStyle(color: DuoColors.textMuted, fontSize: 13),
+                  prefixIcon: const Icon(Icons.search_rounded, color: DuoColors.primaryBlue),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, color: Colors.white54, size: 20),
+                          icon: const Icon(Icons.clear_rounded, color: DuoColors.textMuted, size: 20),
                           onPressed: () {
                             _searchController.clear();
                             setState(() => _searchQuery = '');
@@ -610,7 +622,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         )
                       : null,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
             ),
@@ -688,21 +699,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       final convertedFee = currencyService.formatCurrency(ev.feeUsd, selectedCurrency);
                       final raceTimeStr = timezoneService.formatForZone(ev.startTimeUtc, selectedTimezone);
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white10),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () => _showEventDetailModal(ev),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: DuoCard(
+                          padding: const EdgeInsets.all(16),
+                          onTap: () => _showEventDetailModal(ev),
+                          child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
@@ -772,11 +774,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                 ],
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
-                      );
+                            );
                     },
                   ),
           ],

@@ -12,6 +12,7 @@ import 'services/timezone_service.dart';
 import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
 import 'screens/main_navigation_wrapper.dart';
+import 'theme/duo_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,23 +108,23 @@ class _GlobalVirtualRaceAppState extends State<GlobalVirtualRaceApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        scaffoldBackgroundColor: DuoColors.background,
         colorScheme: const ColorScheme.dark(
-          primary: Colors.cyanAccent,
-          secondary: Colors.amberAccent,
-          surface: Color(0xFF1E293B),
+          primary: DuoColors.primaryBlue,
+          secondary: DuoColors.streakGold,
+          surface: DuoColors.surface,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF1E293B),
+          backgroundColor: DuoColors.surface,
           elevation: 0,
         ),
         fontFamily: 'Roboto',
       ),
       home: _isCheckingAuth
           ? const Scaffold(
-              backgroundColor: Color(0xFF0F172A),
+              backgroundColor: DuoColors.background,
               body: Center(
-                child: CircularProgressIndicator(color: Colors.cyanAccent),
+                child: CircularProgressIndicator(color: DuoColors.primaryBlue),
               ),
             )
           : _isLoggedIn
