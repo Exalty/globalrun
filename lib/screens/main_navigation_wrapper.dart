@@ -3,8 +3,10 @@ import '../services/blockchain_service.dart';
 import '../services/ai_coach_service.dart';
 import '../theme/duo_theme.dart';
 import 'home_screen.dart';
-import 'profile_screen.dart';
+import 'ai_coach_screen.dart';
+import 'mini_game_screen.dart';
 import 'feedback_screen.dart';
+import 'profile_screen.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   final BlockchainService blockchainService;
@@ -34,6 +36,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         blockchainService: widget.blockchainService,
         aiCoachService: widget.aiCoachService,
       ),
+      AiCoachScreen(
+        coachService: widget.aiCoachService,
+      ),
+      const MiniGameScreen(),
       const FeedbackScreen(),
       ProfileScreen(onLogout: widget.onLogout),
     ];
@@ -63,11 +69,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
             ),
           ],
         ),
-        padding: const EdgeInsets.only(top: 8, bottom: 12, left: 16, right: 16),
+        padding: const EdgeInsets.only(top: 6, bottom: 8, left: 8, right: 8),
         child: SafeArea(
           top: false,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildDuoNavItem(
                 index: 0,
@@ -78,15 +83,29 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               ),
               _buildDuoNavItem(
                 index: 1,
+                icon: Icons.psychology_outlined,
+                activeIcon: Icons.psychology_rounded,
+                label: 'COACH RANI',
+                palette: palette,
+              ),
+              _buildDuoNavItem(
+                index: 2,
+                icon: Icons.sports_esports_outlined,
+                activeIcon: Icons.sports_esports_rounded,
+                label: 'MINI GAME',
+                palette: palette,
+              ),
+              _buildDuoNavItem(
+                index: 3,
                 icon: Icons.rate_review_outlined,
                 activeIcon: Icons.rate_review_rounded,
                 label: 'SARAN',
                 palette: palette,
               ),
               _buildDuoNavItem(
-                index: 2,
-                icon: Icons.face_rounded,
-                activeIcon: Icons.face_rounded,
+                index: 4,
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
                 label: 'PROFIL',
                 palette: palette,
               ),
@@ -106,42 +125,48 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   }) {
     final bool isSelected = _currentIndex == index;
 
-    return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? palette.primaryBlue.withOpacity(palette.isDark ? 0.16 : 0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? palette.primaryBlue : Colors.transparent,
-            width: 2.0,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              size: 24,
-              color: isSelected ? palette.primaryBlue : palette.textMuted,
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _currentIndex = index),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? palette.primaryBlue.withOpacity(palette.isDark ? 0.16 : 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? palette.primaryBlue : Colors.transparent,
+              width: 2.0,
             ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.6,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSelected ? activeIcon : icon,
+                size: 22,
                 color: isSelected ? palette.primaryBlue : palette.textMuted,
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                    color: isSelected ? palette.primaryBlue : palette.textMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

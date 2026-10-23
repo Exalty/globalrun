@@ -12,8 +12,6 @@ import '../services/notification_service.dart';
 import '../services/event_service.dart';
 import 'active_race_screen.dart';
 import 'blockchain_certificate_screen.dart';
-import 'mini_game_screen.dart';
-import 'ai_coach_screen.dart';
 import 'notification_screen.dart';
 import '../theme/duo_theme.dart';
 
@@ -474,16 +472,6 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.videogame_asset_rounded, color: Colors.amberAccent),
-            tooltip: 'Endless Runner Mini-Game',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MiniGameScreen()),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.military_tech_rounded, color: Colors.cyanAccent),
             tooltip: 'Blockchain Medals NFT',
             onPressed: () {
@@ -781,67 +769,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SizedBox(height: 20),
-
-            // Feature Quick Actions (AI Coach & Mini Game - Duo 3D)
-            Row(
-              children: [
-                Expanded(
-                  child: DuoCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AiCoachScreen(
-                            coachService: widget.aiCoachService,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        const Icon(Icons.psychology_rounded, color: DuoColors.primaryBlue, size: 28),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('COACH RANI', style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 13)),
-                            const Text('Nutrisi & Taktik', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DuoCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MiniGameScreen()),
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        const Icon(Icons.sports_esports_rounded, color: DuoColors.streakGold, size: 28),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('MINI GAME', style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 13)),
-                            const Text('Endless Runner', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
 
             // Fasilitas Pencarian Lomba (Search Bar - Duo 3D)
             DuoCard(
