@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/race_event.dart';
 import '../services/timezone_service.dart';
@@ -7,6 +8,7 @@ import '../services/currency_service.dart';
 import '../services/blockchain_service.dart';
 import '../services/ai_coach_service.dart';
 import '../services/notification_service.dart';
+import '../services/event_service.dart';
 import 'active_race_screen.dart';
 import 'blockchain_certificate_screen.dart';
 import 'mini_game_screen.dart';
@@ -31,20 +33,30 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final NotificationService _notificationService = NotificationService();
 
-  final List<RaceEvent> events = RaceEvent.sampleEvents();
-
   // Pencarian dan Filter Kategori
   String _searchQuery = '';
   String _selectedCategory = 'all'; // 'all', 'run', 'cycling'
   final TextEditingController _searchController = TextEditingController();
 
-  List<RaceEvent> get _filteredEvents {
-    return events.where((e) {
-      final matchesQuery = e.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          e.description.toLowerCase().contains(_searchQuery.toLowerCase());
+  List<RaceEvent> _getFilteredEvents(List<RaceEvent> allEvents) {
+    return allEvents.where((e) {
+      final query = _searchQuery.toLowerCase();
+      final matchesQuery = e.title.toLowerCase().contains(query) ||
+          e.description.toLowerCase().contains(query) ||
+          (e.location?.toLowerCase().contains(query) ?? false);
       final matchesCategory = _selectedCategory == 'all' || e.type == _selectedCategory;
       return matchesQuery && matchesCategory;
     }).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<EventService>().fetchEvents();
+      }
+    });
   }
 
   @override
@@ -101,6 +113,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 event.title,
                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
               ),
+              if (event.location != null && event.location!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, color: Colors.amberAccent, size: 16),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        event.location!,
+                        style: const TextStyle(color: Colors.amberAccent, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 event.description,
@@ -148,6 +175,34 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 20),
+              if (event.officialUrl != null && event.officialUrl!.isNotEmpty) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(event.officialUrl!);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Tidak dapat membuka link: ${event.officialUrl}')),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.public_rounded, size: 18),
+                    label: const Text('Buka Website Resmi Lomba (Live Web)'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: DuoColors.streakGold,
+                      side: const BorderSide(color: DuoColors.streakGold, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -215,11 +270,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = DuoColors.of(context);
-    // Consume providers — rebuild otomatis saat currency/timezone berubah
+    // Consume providers — rebuild otomatis saat currency/timezone/event berubah
     final currencyService = context.watch<CurrencyService>();
     final timezoneService = context.watch<TimezoneService>();
+    final eventService = context.watch<EventService>();
     final selectedTimezone = timezoneService.selectedTimezone;
     final selectedCurrency = currencyService.selectedCurrency;
+    final filteredEvents = _getFilteredEvents(eventService.events);
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -312,7 +369,11 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: () => eventService.fetchEvents(forceRefresh: true),
+        color: palette.primaryBlue,
+        backgroundColor: palette.surface,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -664,34 +725,82 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SizedBox(height: 24),
-            Text(
-              'Jadwal Kompetisi Mendatang',
-              style: TextStyle(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Jadwal Kompetisi Mendatang',
+                      style: TextStyle(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: eventService.isLiveFromBackend ? DuoColors.questGreen : DuoColors.streakGold,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          eventService.isLiveFromBackend
+                              ? 'LIVE DATA (RunSignup & PostgreSQL)'
+                              : (eventService.isLoading ? 'Menghubungkan ke API...' : 'MODE OFFLINE / CACHED'),
+                          style: TextStyle(
+                            color: eventService.isLiveFromBackend ? DuoColors.questGreen : palette.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: eventService.isLoading
+                      ? null
+                      : () => eventService.fetchEvents(forceRefresh: true),
+                  icon: eventService.isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(Icons.refresh_rounded, color: palette.primaryBlue),
+                  tooltip: 'Sinkronkan Live Data',
+                ),
+              ],
             ),
             const SizedBox(height: 12),
 
             // Race Events List
-            _filteredEvents.isEmpty
+            filteredEvents.isEmpty
                 ? Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
+                      color: palette.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white10),
+                      border: Border.all(color: palette.surfaceBorder),
                     ),
                     child: Column(
                       children: [
-                        const Icon(Icons.search_off_rounded, size: 48, color: Colors.white38),
+                        Icon(Icons.search_off_rounded, size: 48, color: palette.textMuted),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'Kompetisi Tidak Ditemukan',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Tidak ada lomba yang sesuai dengan kata kunci "$_searchQuery"',
-                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          style: TextStyle(color: palette.textSecondary, fontSize: 12),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -700,9 +809,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 : ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _filteredEvents.length,
+                    itemCount: filteredEvents.length,
                     itemBuilder: (context, index) {
-                      final ev = _filteredEvents[index];
+                      final ev = filteredEvents[index];
                       final convertedFee = currencyService.formatCurrency(ev.feeUsd, selectedCurrency);
                       final raceTimeStr = timezoneService.formatForZone(ev.startTimeUtc, selectedTimezone);
 
@@ -712,85 +821,131 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: const EdgeInsets.all(16),
                           onTap: () => _showEventDetailModal(ev),
                           child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            ev.type == 'run' ? Icons.directions_run_rounded : Icons.directions_bike_rounded,
-                                            color: ev.type == 'run' ? Colors.cyanAccent : Colors.orangeAccent,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            ev.type == 'run' ? 'Running' : 'Cycling',
-                                            style: TextStyle(
-                                              color: ev.type == 'run' ? Colors.cyanAccent : Colors.orangeAccent,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 12,
+                                      Icon(
+                                        ev.type == 'run' ? Icons.directions_run_rounded : Icons.directions_bike_rounded,
+                                        color: ev.type == 'run' ? palette.neonCyan : DuoColors.streakGold,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: palette.primaryBlue.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: palette.primaryBlue.withOpacity(0.4), width: 1),
+                                        ),
+                                        child: Text(
+                                          '${ev.distanceKm} KM ${ev.type == 'run' ? 'RUN' : 'RIDE'}',
+                                          style: TextStyle(color: palette.primaryBlue, fontSize: 10, fontWeight: FontWeight.w900),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Flexible(
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (ev.officialUrl != null && ev.officialUrl!.isNotEmpty) ...[
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                            margin: const EdgeInsets.only(right: 5),
+                                            decoration: BoxDecoration(
+                                              color: DuoColors.questGreen.withOpacity(0.18),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: DuoColors.questGreen, width: 1),
+                                            ),
+                                            child: const Text(
+                                              '🌐 LIVE',
+                                              style: TextStyle(color: DuoColors.questGreen, fontSize: 9, fontWeight: FontWeight.w900),
                                             ),
                                           ),
                                         ],
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black26,
-                                          borderRadius: BorderRadius.circular(6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: palette.background,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: palette.surfaceBorder),
+                                          ),
+                                          child: Text(
+                                            TimezoneService.getRelativeCountdown(ev.startTimeUtc),
+                                            style: const TextStyle(color: DuoColors.streakGold, fontSize: 10, fontWeight: FontWeight.w700),
+                                          ),
                                         ),
-                                        child: Text(
-                                          TimezoneService.getRelativeCountdown(ev.startTimeUtc),
-                                          style: const TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.w600),
-                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                ev.title,
+                                style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              if (ev.location != null && ev.location!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.location_on_rounded, color: DuoColors.streakGold, size: 14),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        ev.location!,
+                                        style: TextStyle(color: palette.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Text(
+                                ev.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: palette.textSecondary, fontSize: 13),
+                              ),
+                              const Divider(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Start (${selectedTimezone.code})', style: TextStyle(color: palette.textMuted, fontSize: 11)),
+                                      Text(raceTimeStr, style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
                                     ],
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    ev.title,
-                                    style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    ev.description,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: palette.textSecondary, fontSize: 13),
-                                  ),
-                                  const Divider(color: Colors.white12, height: 20),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Start (${selectedTimezone.code})', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                                          Text(raceTimeStr, style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
-                                        ],
-                                      ),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        children: [
-                                          Text('Biaya ($selectedCurrency)', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                                          Text(convertedFee, style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 15)),
-                                        ],
-                                      ),
+                                      Text('Biaya ($selectedCurrency)', style: TextStyle(color: palette.textMuted, fontSize: 11)),
+                                      Text(convertedFee, style: const TextStyle(color: DuoColors.questGreen, fontWeight: FontWeight.bold, fontSize: 15)),
                                     ],
                                   ),
                                 ],
-                                ),
                               ),
-                            );
+                            ],
+                          ),
+                        ),
+                      );
                     },
                   ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFilterChip({
     required String label,

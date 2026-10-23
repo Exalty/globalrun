@@ -24,11 +24,12 @@ class MainNavigationWrapper extends StatefulWidget {
 
 class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   int _currentIndex = 0;
+  late final List<Widget> _screens;
 
   @override
-  Widget build(BuildContext context) {
-    final palette = DuoColors.of(context);
-    final List<Widget> screens = [
+  void initState() {
+    super.initState();
+    _screens = [
       HomeScreen(
         blockchainService: widget.blockchainService,
         aiCoachService: widget.aiCoachService,
@@ -36,12 +37,17 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       const FeedbackScreen(),
       ProfileScreen(onLogout: widget.onLogout),
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
 
     return Scaffold(
       backgroundColor: palette.background,
       body: IndexedStack(
         index: _currentIndex,
-        children: screens,
+        children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

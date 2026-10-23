@@ -14,6 +14,7 @@ import 'services/notification_service.dart';
 import 'screens/main_navigation_wrapper.dart';
 import 'theme/duo_theme.dart';
 import 'services/theme_service.dart';
+import 'services/event_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,8 @@ void main() async {
   final themeService = ThemeService();
   await themeService.init();
 
+  final eventService = EventService();
+
   runApp(
     MultiProvider(
       providers: [
@@ -49,6 +52,7 @@ void main() async {
         ChangeNotifierProvider.value(value: currencyService),
         ChangeNotifierProvider.value(value: timezoneService),
         ChangeNotifierProvider.value(value: themeService),
+        ChangeNotifierProvider.value(value: eventService),
       ],
       child: GlobalVirtualRaceApp(
         blockchainService: blockchainService,
