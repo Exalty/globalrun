@@ -65,7 +65,7 @@ class RaceEvent {
       feeUsd: fee,
       bannerUrl: json['banner_url']?.toString() ?? json['title']?.toString() ?? 'Global Race',
       officialUrl: json['official_url']?.toString(),
-      location: json['location']?.toString() ?? 'Global Venue 🌐',
+      location: json['location']?.toString() ?? 'Global Venue',
       isLiveExternal: json['is_live_external'] == true,
     );
   }
@@ -83,7 +83,7 @@ class RaceEvent {
         feeUsd: 25.0,
         bannerUrl: 'Tokyo Marathon 2026',
         officialUrl: 'https://www.marathon.tokyo/en/',
-        location: 'Tokyo, Japan 🇯🇵',
+        location: 'Tokyo, Japan',
         isLiveExternal: true,
       ),
       RaceEvent(
@@ -96,7 +96,7 @@ class RaceEvent {
         feeUsd: 18.0,
         bannerUrl: 'Maybank Marathon Bali 2026',
         officialUrl: 'https://www.maybankmarathon.com/',
-        location: 'Gianyar, Bali, Indonesia 🇮🇩',
+        location: 'Gianyar, Bali, Indonesia',
         isLiveExternal: true,
       ),
       RaceEvent(
@@ -109,7 +109,7 @@ class RaceEvent {
         feeUsd: 10.0,
         bannerUrl: 'Borobudur Virtual 10K',
         officialUrl: 'https://borobudurmarathon.com/',
-        location: 'Magelang, Jawa Tengah, Indonesia 🇮🇩',
+        location: 'Magelang, Jawa Tengah, Indonesia',
         isLiveExternal: true,
       ),
       RaceEvent(
@@ -122,7 +122,7 @@ class RaceEvent {
         feeUsd: 20.0,
         bannerUrl: 'Tour de Alps 50K',
         officialUrl: 'https://www.letour.fr/en/',
-        location: 'Alps, France / Switzerland 🏔️',
+        location: 'Alps, France / Switzerland',
         isLiveExternal: true,
       ),
     ];

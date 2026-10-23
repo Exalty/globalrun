@@ -74,15 +74,15 @@ class NotificationService extends ChangeNotifier {
     _notifications.addAll([
       AppNotification(
         id: 'notif_welcome',
-        title: '🏁 Selamat Datang di Global Virtual Race!',
-        body: 'Siapkan sepatu lari & GPS Anda. Ikuti Tokyo Virtual Marathon 10K dan raih medali NFT tercatat di Polygon!',
+        title: 'Selamat Datang di Global Virtual Race!',
+        body: 'Siapkan sepatu lari dan GPS Anda. Ikuti Tokyo Virtual Marathon 10K dan raih medali NFT tercatat di Polygon!',
         timestamp: DateTime.now().subtract(const Duration(hours: 2)),
         type: 'system',
         isRead: false,
       ),
       AppNotification(
         id: 'notif_race_remind',
-        title: '⏰ Pengingat: Tokyo Virtual 10K',
+        title: 'Pengingat: Tokyo Virtual 10K',
         body: 'Flag-off dibuka dalam hitungan jam. Pastikan baterai dan koneksi GPS perangkat Anda dalam kondisi prima!',
         timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
         type: 'race_reminder',
@@ -90,7 +90,7 @@ class NotificationService extends ChangeNotifier {
       ),
       AppNotification(
         id: 'notif_ai_coach',
-        title: '🤖 AI Coach: Tips Pacing & Hidrasi',
+        title: 'AI Coach: Tips Pacing & Hidrasi',
         body: 'Gunakan cadence 160-170 SPM di awal 3 KM pertama untuk menjaga efisiensi energi sebelum tanjakan.',
         timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
         type: 'ai_coach',
@@ -160,7 +160,7 @@ class NotificationService extends ChangeNotifier {
     if (!alreadyExists) {
       final newNotif = AppNotification(
         id: notifId,
-        title: '🔥 Kompetisi Live Baru: ${firstEvent.title}',
+        title: 'Kompetisi Live Baru: ${firstEvent.title}',
         body: 'Jarak ${firstEvent.distanceKm} KM di ${firstEvent.location ?? "Global"}. Flag-off segera dibuka, buka aplikasi dan pasang target lari terbaikmu!',
         timestamp: DateTime.now(),
         type: 'race_reminder',
@@ -176,12 +176,12 @@ class NotificationService extends ChangeNotifier {
   Future<void> sendSampleNotification(String sampleType, {RaceEvent? event}) async {
     final eventTitle = event?.title ?? 'Tokyo Marathon 2026';
     final eventDist = event != null ? '${event.distanceKm} KM' : '10 KM';
-    final eventLoc = event?.location ?? 'Tokyo, Japan 🇯🇵';
+    final eventLoc = event?.location ?? 'Tokyo, Japan';
 
     switch (sampleType) {
       case 'flag_off':
         await showNotification(
-          title: '🚨 FLAG-OFF: $eventTitle Dimulai!',
+          title: 'FLAG-OFF: $eventTitle Dimulai!',
           body: 'Garis start resmi dibuka di $eventLoc! Buka modul pelacak dan mulai lari untuk mencatat waktu terbaikmu.',
           type: 'flag_off',
           payload: 'open_race:${event?.id ?? "1"}',
@@ -189,7 +189,7 @@ class NotificationService extends ChangeNotifier {
         break;
       case 'achievement':
         await showNotification(
-          title: '🎉 Finish Terverifikasi: $eventTitle!',
+          title: 'Finish Terverifikasi: $eventTitle!',
           body: 'Algoritma anti-cheat telah memvalidasi rekaman lari $eventDist Anda. Sertifikat & Medali NFT telah di-mint di blockchain!',
           type: 'achievement',
           payload: 'open_nft',
@@ -197,7 +197,7 @@ class NotificationService extends ChangeNotifier {
         break;
       case 'ai_coach':
         await showNotification(
-          title: '🤖 AI Coach: Strategi $eventTitle',
+          title: 'AI Coach: Strategi $eventTitle',
           body: 'Target $eventDist di $eventLoc. Jaga cadence 165-175 SPM di awal 3 KM dan siapkan hidrasi di titik KM 5.',
           type: 'ai_coach',
         );

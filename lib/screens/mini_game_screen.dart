@@ -552,7 +552,7 @@ class _MiniGameScreenState extends State<MiniGameScreen>
               Expanded(
                 child: AnimatedBuilder(
                   animation: engine,
-                  builder: (_, __) => Row(
+                  builder: (context, _) => Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _stat(Icons.directions_run_rounded, 'Skor',

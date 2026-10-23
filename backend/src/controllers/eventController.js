@@ -10,7 +10,7 @@ const PREMIER_WORLD_EVENTS = [
     start_time_utc: new Date(Date.now() + 1000 * 60 * 60 * 18).toISOString(),
     fee_usd: 25.0,
     official_url: 'https://www.marathon.tokyo/en/',
-    location: 'Tokyo, Japan 🇯🇵',
+    location: 'Tokyo, Japan',
     is_live_external: true,
   },
   {
@@ -21,7 +21,7 @@ const PREMIER_WORLD_EVENTS = [
     start_time_utc: new Date(Date.now() + 1000 * 60 * 60 * 36).toISOString(),
     fee_usd: 18.0,
     official_url: 'https://www.maybankmarathon.com/',
-    location: 'Gianyar, Bali, Indonesia 🇮🇩',
+    location: 'Gianyar, Bali, Indonesia',
     is_live_external: true,
   },
   {
@@ -32,7 +32,7 @@ const PREMIER_WORLD_EVENTS = [
     start_time_utc: new Date(Date.now() + 1000 * 60 * 60 * 72).toISOString(),
     fee_usd: 30.0,
     official_url: 'https://www.tcslondonmarathon.com/',
-    location: 'London, United Kingdom 🇬🇧',
+    location: 'London, United Kingdom',
     is_live_external: true,
   },
   {
@@ -43,7 +43,7 @@ const PREMIER_WORLD_EVENTS = [
     start_time_utc: new Date(Date.now() + 1000 * 60 * 60 * 8).toISOString(),
     fee_usd: 10.0,
     official_url: 'https://borobudurmarathon.com/',
-    location: 'Magelang, Jawa Tengah, Indonesia 🇮🇩',
+    location: 'Magelang, Jawa Tengah, Indonesia',
     is_live_external: true,
   },
   {
@@ -54,7 +54,7 @@ const PREMIER_WORLD_EVENTS = [
     start_time_utc: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(),
     fee_usd: 20.0,
     official_url: 'https://www.letour.fr/en/',
-    location: 'Alps, France / Switzerland 🏔️',
+    location: 'Alps, France / Switzerland',
     is_live_external: true,
   },
 ];
