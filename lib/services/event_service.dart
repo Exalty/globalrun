@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/race_event.dart';
 
 class EventService extends ChangeNotifier {
   // URLs for physical device, emulator, and localhost
-  static const String _primaryUrl = 'http://192.168.110.5:5000';
+  static String get _primaryUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.110.5:5000';
   static const String _emulatorUrl = 'http://10.0.2.2:5000';
   static const String _localUrl = 'http://localhost:5000';
 
@@ -101,3 +102,4 @@ class EventService extends ChangeNotifier {
     _safeNotifyListeners();
   }
 }
+

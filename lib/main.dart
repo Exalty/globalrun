@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/sensor_service.dart';
 import 'services/location_service.dart';
@@ -21,6 +22,20 @@ void main() async {
 
   // Load environment variables from .env file
   await dotenv.load(fileName: '.env');
+
+  // Inisialisasi Supabase Cloud
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+  if (supabaseUrl != null && supabaseAnonKey != null) {
+    try {
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+      );
+    } catch (e) {
+      debugPrint('Supabase init error: $e');
+    }
+  }
 
   final notificationService = NotificationService();
   await notificationService.init();
@@ -139,3 +154,4 @@ class _GlobalVirtualRaceAppState extends State<GlobalVirtualRaceApp> {
     );
   }
 }
+

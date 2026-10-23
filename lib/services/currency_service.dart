@@ -191,17 +191,7 @@ class CurrencyService extends ChangeNotifier {
       final formatter = NumberFormat('#,##0.00', 'en_US');
       return '${rate.symbol}${formatter.format(converted)}';
     }
-  }
 
-  // ─── Backward-compatible static helpers ────────────────────────────
-  /// Agar kode lama yang memanggil CurrencyService.formatCurrency(...)
-  /// secara statis tetap jalan tanpa error.
-  static String formatCurrencyStatic(double amountUsd, String targetCurrencyCode) {
-    return _instance.formatCurrency(amountUsd, targetCurrencyCode);
-  }
-
-  static double convertStatic(double amountUsd, String targetCurrencyCode) {
-    return _instance.convert(amountUsd, targetCurrencyCode);
   }
 
   /// Label kurs untuk ditampilkan di UI info badge
@@ -212,3 +202,5 @@ class CurrencyService extends ChangeNotifier {
     return '1 USD = ${rate.ratePerUsd.toStringAsFixed(code == 'IDR' || code == 'JPY' ? 0 : 4)} $code';
   }
 }
+
+
