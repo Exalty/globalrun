@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/app_notification.dart';
 import '../services/notification_service.dart';
 import '../services/blockchain_service.dart';
+import '../services/event_service.dart';
+import '../theme/duo_theme.dart';
 import 'blockchain_certificate_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -22,7 +25,21 @@ class _NotificationScreenState extends State<NotificationScreen> {
   String _selectedFilter = 'all'; // 'all', 'race', 'ai_coach', 'achievement'
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final events = context.read<EventService>().events;
+        _notificationService.syncWithLiveEvents(events);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
+    final eventService = context.watch<EventService>();
+
     return AnimatedBuilder(
       animation: _notificationService,
       builder: (context, _) {
@@ -42,26 +59,35 @@ class _NotificationScreenState extends State<NotificationScreen> {
         }).toList();
 
         return Scaffold(
-          backgroundColor: const Color(0xFF0F172A),
+          backgroundColor: palette.background,
           appBar: AppBar(
-            backgroundColor: const Color(0xFF1E293B),
+            backgroundColor: palette.surface,
             elevation: 0,
+            shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
             title: Row(
               children: [
-                const Icon(Icons.notifications_active_rounded, color: Colors.cyanAccent),
+                Icon(Icons.notifications_active_rounded, color: palette.primaryBlue, size: 24),
                 const SizedBox(width: 10),
-                const Text('Pusat Notifikasi Mobile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                Text(
+                  'NOTIFIKASI LOMBA',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                    fontSize: 16,
+                    color: palette.textPrimary,
+                  ),
+                ),
                 if (_notificationService.unreadCount > 0) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.redAccent,
+                      color: DuoColors.heartRed,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${_notificationService.unreadCount}',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
                     ),
                   ),
                 ],
@@ -70,30 +96,28 @@ class _NotificationScreenState extends State<NotificationScreen> {
             actions: [
               if (allNotifs.isNotEmpty)
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
-                  color: const Color(0xFF1E293B),
+                  icon: Icon(Icons.more_vert_rounded, color: palette.textSecondary),
+                  color: palette.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(color: palette.surfaceBorder, width: 1.5),
+                  ),
                   onSelected: (val) {
                     if (val == 'mark_all_read') {
                       _notificationService.markAllAsRead();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Semua notifikasi ditandai sudah dibaca'),
-                          backgroundColor: Colors.cyan,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
+                      _showToast('Semua notifikasi ditandai sudah dibaca', palette);
                     } else if (val == 'clear_all') {
-                      _showClearConfirmation();
+                      _showClearConfirmation(palette);
                     }
                   },
                   itemBuilder: (ctx) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'mark_all_read',
                       child: Row(
                         children: [
-                          Icon(Icons.done_all_rounded, color: Colors.cyanAccent, size: 18),
-                          SizedBox(width: 8),
-                          Text('Tandai Semua Dibaca', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          Icon(Icons.done_all_rounded, color: palette.primaryBlue, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Tandai Semua Dibaca', style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -101,9 +125,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       value: 'clear_all',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 18),
+                          Icon(Icons.delete_sweep_rounded, color: DuoColors.heartRed, size: 18),
                           SizedBox(width: 8),
-                          Text('Hapus Semua', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                          Text('Hapus Semua', style: TextStyle(color: DuoColors.heartRed, fontSize: 13, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -114,19 +138,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Panel Simulasi Notifikasi Push (Interactive Concept Demonstration)
-              _buildSimulationCard(),
+              // Panel Uji Coba Simulasi Notifikasi Push (Live Event Integrated)
+              _buildSimulationCard(palette, eventService),
               const SizedBox(height: 16),
 
-              // Filter Chips
-              _buildFilterChips(),
+              // Filter Chips Duolingo Style
+              _buildFilterChips(palette),
               const SizedBox(height: 16),
 
               // Daftar Notifikasi
               if (filteredNotifs.isEmpty)
-                _buildEmptyState()
+                _buildEmptyState(palette)
               else
-                ...filteredNotifs.map((notif) => _buildNotificationCard(notif)),
+                ...filteredNotifs.map((notif) => _buildNotificationCard(notif, palette)),
             ],
           ),
         );
@@ -134,80 +158,95 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildSimulationCard() {
-    return Container(
+  Widget _buildSimulationCard(DuoColorPalette palette, EventService eventService) {
+    final liveEvent = eventService.events.isNotEmpty ? eventService.events.first : null;
+    final eventName = liveEvent?.title ?? 'Tokyo Marathon 2026';
+
+    return DuoCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.2)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: Colors.cyanAccent.withOpacity(0.15),
-                  shape: BoxShape.circle,
+                  color: palette.primaryBlue.withOpacity(palette.isDark ? 0.20 : 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: palette.primaryBlue, width: 1.5),
                 ),
-                child: const Icon(Icons.touch_app_rounded, color: Colors.cyanAccent, size: 18),
+                child: Icon(Icons.touch_app_rounded, color: palette.primaryBlue, size: 18),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Uji Coba Push Notifikasi Mobile',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      'UJI COBA NOTIFIKASI LIVE EVENT',
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      'Ketuk untuk memicu notifikasi bar HP sesuai skenario SRS',
-                      style: TextStyle(color: Colors.white60, fontSize: 11),
+                      'Terkoneksi ke: $eventName',
+                      style: TextStyle(color: palette.textMuted, fontSize: 11, fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildActionButton(
-                label: '🏁 Flag-Off Mulai',
-                color: Colors.amberAccent,
+              _build3DActionButton(
+                label: '🏁 FLAG-OFF MULAI',
+                bgColor: DuoColors.streakGold,
+                shadowColor: DuoColors.streakGoldShadow,
+                textColor: Colors.black,
                 onTap: () {
-                  _notificationService.sendSampleNotification('flag_off');
-                  _showToast('Notifikasi Flag-Off dikirim ke status bar HP');
+                  _notificationService.sendSampleNotification('flag_off', event: liveEvent);
+                  _showToast('Notifikasi Flag-off terkirim untuk $eventName', palette);
                 },
               ),
-              _buildActionButton(
-                label: '🏆 Finis & Medali NFT',
-                color: Colors.purpleAccent,
+              _build3DActionButton(
+                label: '🏆 FINIS & MEDALI NFT',
+                bgColor: palette.neonCyan,
+                shadowColor: palette.neonCyanShadow,
+                textColor: Colors.black,
                 onTap: () {
-                  _notificationService.sendSampleNotification('achievement');
-                  _showToast('Notifikasi Finish NFT dikirim ke status bar HP');
+                  _notificationService.sendSampleNotification('achievement', event: liveEvent);
+                  _showToast('Notifikasi Medali NFT terkirim', palette);
                 },
               ),
-              _buildActionButton(
-                label: '🤖 AI Coach Advice',
-                color: Colors.greenAccent,
+              _build3DActionButton(
+                label: '🤖 AI COACH ADVICE',
+                bgColor: DuoColors.questGreen,
+                shadowColor: DuoColors.questGreenShadow,
+                textColor: Colors.white,
                 onTap: () {
-                  _notificationService.sendSampleNotification('ai_coach');
-                  _showToast('Notifikasi AI Coach dikirim ke status bar HP');
+                  _notificationService.sendSampleNotification('ai_coach', event: liveEvent);
+                  _showToast('Notifikasi AI Coach terkirim', palette);
                 },
               ),
-              _buildActionButton(
-                label: '⏰ Pengingat 15 Menit',
-                color: Colors.cyanAccent,
+              _build3DActionButton(
+                label: '⏰ PENGINGAT 15 MENIT',
+                bgColor: palette.primaryBlue,
+                shadowColor: palette.primaryBlueShadow,
+                textColor: Colors.white,
                 onTap: () {
-                  _notificationService.sendSampleNotification('race_reminder');
-                  _showToast('Notifikasi Jadwal dikirim ke status bar HP');
+                  _notificationService.sendSampleNotification('race_reminder', event: liveEvent);
+                  _showToast('Pengingat jadwal live terkirim', palette);
                 },
               ),
             ],
@@ -217,35 +256,47 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildActionButton({
+  Widget _build3DActionButton({
     required String label,
-    required Color color,
+    required Color bgColor,
+    required Color shadowColor,
+    required Color textColor,
     required VoidCallback onTap,
   }) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          border: Border.all(color: color.withOpacity(0.4)),
-          borderRadius: BorderRadius.circular(8),
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: shadowColor,
+              offset: const Offset(0, 3),
+              blurRadius: 0,
+            ),
+          ],
         ),
         child: Text(
           label,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w900,
+            fontSize: 10,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildFilterChips() {
+  Widget _buildFilterChips(DuoColorPalette palette) {
     final filters = [
-      {'key': 'all', 'label': 'Semua'},
-      {'key': 'race', 'label': '🏃 Race & Flag-Off'},
-      {'key': 'ai_coach', 'label': '🤖 AI Coach'},
-      {'key': 'achievement', 'label': '🏆 Medali NFT'},
+      {'key': 'all', 'label': 'SEMUA', 'icon': Icons.notifications_rounded},
+      {'key': 'race', 'label': 'RACE & FLAG-OFF', 'icon': Icons.directions_run_rounded},
+      {'key': 'ai_coach', 'label': 'AI COACH', 'icon': Icons.psychology_rounded},
+      {'key': 'achievement', 'label': 'MEDALI NFT', 'icon': Icons.military_tech_rounded},
     ];
 
     return SingleChildScrollView(
@@ -255,27 +306,21 @@ class _NotificationScreenState extends State<NotificationScreen> {
           final isSelected = _selectedFilter == f['key'];
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(f['label']!),
-              selected: isSelected,
-              onSelected: (val) {
-                if (val) {
-                  setState(() {
-                    _selectedFilter = f['key']!;
-                  });
-                }
+            child: DuoChip(
+              icon: Icon(
+                f['icon'] as IconData,
+                color: isSelected ? palette.primaryBlue : palette.textSecondary,
+                size: 14,
+              ),
+              label: f['label'] as String,
+              backgroundColor: isSelected ? palette.primaryBlue.withOpacity(palette.isDark ? 0.22 : 0.14) : palette.surface,
+              borderColor: isSelected ? palette.primaryBlue : palette.surfaceBorder,
+              textColor: isSelected ? palette.primaryBlue : palette.textSecondary,
+              onTap: () {
+                setState(() {
+                  _selectedFilter = f['key'] as String;
+                });
               },
-              backgroundColor: const Color(0xFF1E293B),
-              selectedColor: Colors.cyanAccent,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.black : Colors.white70,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 12,
-              ),
-              side: BorderSide(
-                color: isSelected ? Colors.cyanAccent : Colors.white12,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             ),
           );
         }).toList(),
@@ -283,34 +328,40 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildNotificationCard(AppNotification notif) {
+  Widget _buildNotificationCard(AppNotification notif, DuoColorPalette palette) {
     Color iconColor;
+    Color iconShadow;
     IconData iconData;
     String badgeText;
 
     switch (notif.type) {
       case 'flag_off':
-        iconColor = Colors.amberAccent;
+        iconColor = DuoColors.streakGold;
+        iconShadow = DuoColors.streakGoldShadow;
         iconData = Icons.sports_score_rounded;
         badgeText = 'FLAG-OFF';
         break;
       case 'achievement':
-        iconColor = Colors.purpleAccent;
+        iconColor = palette.neonCyan;
+        iconShadow = palette.neonCyanShadow;
         iconData = Icons.military_tech_rounded;
         badgeText = 'MEDALI NFT';
         break;
       case 'ai_coach':
-        iconColor = Colors.greenAccent;
+        iconColor = DuoColors.questGreen;
+        iconShadow = DuoColors.questGreenShadow;
         iconData = Icons.psychology_rounded;
         badgeText = 'AI COACH';
         break;
       case 'race_reminder':
-        iconColor = Colors.cyanAccent;
+        iconColor = palette.primaryBlue;
+        iconShadow = palette.primaryBlueShadow;
         iconData = Icons.alarm_rounded;
-        badgeText = 'JADWAL';
+        badgeText = 'JADWAL LIVE';
         break;
       default:
-        iconColor = Colors.blueAccent;
+        iconColor = palette.primaryBlue;
+        iconShadow = palette.primaryBlueShadow;
         iconData = Icons.info_outline_rounded;
         badgeText = 'SISTEM';
         break;
@@ -318,43 +369,42 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     final formattedTime = DateFormat('dd MMM, HH:mm').format(notif.timestamp);
 
-    return InkWell(
-      onTap: () {
-        _notificationService.markAsRead(notif.id);
-        if (notif.actionPayload == 'open_nft' && widget.blockchainService != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => BlockchainCertificateScreen(
-                blockchainService: widget.blockchainService!,
-              ),
-            ),
-          );
-        }
-      },
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DuoCard(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: notif.isRead ? const Color(0xFF1E293B) : const Color(0xFF192A45),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: notif.isRead ? Colors.white10 : Colors.cyanAccent.withOpacity(0.4),
-            width: notif.isRead ? 1 : 1.5,
-          ),
-        ),
+        onTap: () {
+          _notificationService.markAsRead(notif.id);
+          if (notif.actionPayload == 'open_nft' && widget.blockchainService != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BlockchainCertificateScreen(
+                  blockchainService: widget.blockchainService!,
+                ),
+              ),
+            );
+          }
+        },
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon container
+            // 3D Avatar/Icon container
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.15),
+                color: iconColor.withOpacity(palette.isDark ? 0.20 : 0.14),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: iconColor, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: iconShadow.withOpacity(0.4),
+                    offset: const Offset(0, 3),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
-              child: Icon(iconData, color: iconColor, size: 24),
+              child: Icon(iconData, color: iconColor, size: 22),
             ),
             const SizedBox(width: 12),
 
@@ -369,15 +419,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: iconColor.withOpacity(0.2),
+                          color: iconColor.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: iconColor.withOpacity(0.5), width: 1),
                         ),
                         child: Text(
                           badgeText,
                           style: TextStyle(
                             color: iconColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
@@ -385,16 +437,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         children: [
                           Text(
                             formattedTime,
-                            style: const TextStyle(color: Colors.white38, fontSize: 11),
+                            style: TextStyle(color: palette.textMuted, fontSize: 11),
                           ),
                           if (!notif.isRead) ...[
                             const SizedBox(width: 6),
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.cyanAccent,
+                              decoration: BoxDecoration(
+                                color: palette.primaryBlue,
                                 shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: palette.primaryBlueShadow,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -406,15 +464,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   Text(
                     notif.title,
                     style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: notif.isRead ? FontWeight.w600 : FontWeight.bold,
+                      color: palette.textPrimary,
+                      fontWeight: notif.isRead ? FontWeight.w700 : FontWeight.w900,
                       fontSize: 14,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     notif.body,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
+                    style: TextStyle(color: palette.textSecondary, fontSize: 12, height: 1.3),
                   ),
                 ],
               ),
@@ -425,43 +483,49 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(DuoColorPalette palette) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 48),
       alignment: Alignment.center,
       child: Column(
         children: [
-          Icon(Icons.notifications_none_rounded, color: Colors.white24, size: 64),
+          Icon(Icons.notifications_none_rounded, color: palette.textMuted, size: 64),
           const SizedBox(height: 12),
-          const Text(
-            'Belum Ada Notifikasi',
-            style: TextStyle(color: Colors.white60, fontSize: 15, fontWeight: FontWeight.bold),
+          Text(
+            'BELUM ADA NOTIFIKASI',
+            style: TextStyle(color: palette.textPrimary, fontSize: 15, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Notifikasi event race & AI Coach akan muncul di sini.',
-            style: TextStyle(color: Colors.white38, fontSize: 12),
+            style: TextStyle(color: palette.textSecondary, fontSize: 12),
           ),
         ],
       ),
     );
   }
 
-  void _showClearConfirmation() {
+  void _showClearConfirmation(DuoColorPalette palette) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Semua Notifikasi?', style: TextStyle(color: Colors.white)),
-        content: const Text(
+        backgroundColor: palette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: palette.surfaceBorder, width: 2),
+        ),
+        title: Text(
+          'Hapus Semua Notifikasi?',
+          style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900),
+        ),
+        content: Text(
           'Semua riwayat notifikasi akan dihapus dari perangkat.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: palette.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: Colors.white60)),
+            child: Text('Batal', style: TextStyle(color: palette.textMuted, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -469,22 +533,27 @@ class _NotificationScreenState extends State<NotificationScreen> {
               _notificationService.clearAll();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
+              backgroundColor: DuoColors.heartRed,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Hapus'),
+            child: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.w900)),
           ),
         ],
       ),
     );
   }
 
-  void _showToast(String message) {
+  void _showToast(String message, DuoColorPalette palette) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF1E293B),
+        content: Text(message, style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w700)),
+        backgroundColor: palette.surface,
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: palette.surfaceBorder, width: 1.5),
+        ),
         duration: const Duration(seconds: 2),
       ),
     );

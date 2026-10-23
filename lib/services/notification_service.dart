@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_notification.dart';
+import '../models/race_event.dart';
 
 class NotificationService extends ChangeNotifier {
   static final NotificationService _instance = NotificationService._internal();
@@ -148,38 +149,66 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  Future<void> sendSampleNotification(String sampleType) async {
+  void syncWithLiveEvents(List<RaceEvent> events) {
+    if (events.isEmpty) return;
+
+    // Tambahkan notifikasi pengumuman untuk event live teratas jika belum ada
+    final firstEvent = events.first;
+    final notifId = 'notif_live_${firstEvent.id}';
+
+    final alreadyExists = _notifications.any((n) => n.id == notifId);
+    if (!alreadyExists) {
+      final newNotif = AppNotification(
+        id: notifId,
+        title: '🔥 Kompetisi Live Baru: ${firstEvent.title}',
+        body: 'Jarak ${firstEvent.distanceKm} KM di ${firstEvent.location ?? "Global"}. Flag-off segera dibuka, buka aplikasi dan pasang target lari terbaikmu!',
+        timestamp: DateTime.now(),
+        type: 'race_reminder',
+        isRead: false,
+        actionPayload: 'open_race:${firstEvent.id}',
+      );
+      _notifications.insert(0, newNotif);
+      _saveToPrefs();
+      notifyListeners();
+    }
+  }
+
+  Future<void> sendSampleNotification(String sampleType, {RaceEvent? event}) async {
+    final eventTitle = event?.title ?? 'Tokyo Marathon 2026';
+    final eventDist = event != null ? '${event.distanceKm} KM' : '10 KM';
+    final eventLoc = event?.location ?? 'Tokyo, Japan 🇯🇵';
+
     switch (sampleType) {
       case 'flag_off':
         await showNotification(
-          title: '🚨 FLAG-OFF: Tokyo Virtual 10K Dimulai!',
-          body: 'Garis start resmi dibuka! Buka modul pelacak dan mulai lari untuk mencatat waktu terbaikmu.',
+          title: '🚨 FLAG-OFF: $eventTitle Dimulai!',
+          body: 'Garis start resmi dibuka di $eventLoc! Buka modul pelacak dan mulai lari untuk mencatat waktu terbaikmu.',
           type: 'flag_off',
-          payload: 'open_race:1',
+          payload: 'open_race:${event?.id ?? "1"}',
         );
         break;
       case 'achievement':
         await showNotification(
-          title: '🎉 Finish Terverifikasi & Medali NFT Siap!',
-          body: 'Algoritma anti-cheat telah memvalidasi rekaman lari 10 KM Anda. Sertifikat & NFT telah di-mint!',
+          title: '🎉 Finish Terverifikasi: $eventTitle!',
+          body: 'Algoritma anti-cheat telah memvalidasi rekaman lari $eventDist Anda. Sertifikat & Medali NFT telah di-mint di blockchain!',
           type: 'achievement',
           payload: 'open_nft',
         );
         break;
       case 'ai_coach':
         await showNotification(
-          title: '🤖 AI Coach: Peringatan Hidrasi & Pace',
-          body: 'Pace Anda stabil di 5\'15"/km. Waktunya minum sedikit air dan relakskan bahu Anda.',
+          title: '🤖 AI Coach: Strategi $eventTitle',
+          body: 'Target $eventDist di $eventLoc. Jaga cadence 165-175 SPM di awal 3 KM dan siapkan hidrasi di titik KM 5.',
           type: 'ai_coach',
         );
         break;
       case 'race_reminder':
       default:
         await showNotification(
-          title: '⏰ Pengingat Race: 15 Menit Menuju Start',
-          body: 'Lakukan pemanasan dinamis 10 menit. Flag-off Jakarta Night Run 5K segera dimulai!',
+          title: '⏰ Pengingat: 15 Menit Menuju $eventTitle',
+          body: 'Lakukan pemanasan dinamis 10 menit. Flag-off $eventTitle ($eventDist) segera dimulai!',
           type: 'race_reminder',
-          payload: 'open_race:2',
+          payload: 'open_race:${event?.id ?? "1"}',
         );
         break;
     }

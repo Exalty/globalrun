@@ -54,7 +54,12 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<EventService>().fetchEvents();
+        final eventService = context.read<EventService>();
+        eventService.fetchEvents().then((_) {
+          if (mounted) {
+            _notificationService.syncWithLiveEvents(eventService.events);
+          }
+        });
       }
     });
   }
