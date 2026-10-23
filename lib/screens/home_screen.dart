@@ -54,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showEventDetailModal(RaceEvent event) {
+    final palette = DuoColors.of(context);
     final currencyService = context.read<CurrencyService>();
     final timezoneService = context.read<TimezoneService>();
     final selectedTimezone = timezoneService.selectedTimezone;
@@ -62,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: palette.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return Padding(
@@ -114,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Jadwal Start (${selectedTimezone.code}):',
-                    style: const TextStyle(color: Colors.white60, fontSize: 13),
+                    style: TextStyle(color: palette.textSecondary, fontSize: 13),
                   ),
                 ],
               ),
@@ -136,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Biaya Pendaftaran ($selectedCurrency):',
-                    style: const TextStyle(color: Colors.white60, fontSize: 13),
+                    style: TextStyle(color: palette.textSecondary, fontSize: 13),
                   ),
                 ],
               ),
@@ -213,6 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
     // Consume providers — rebuild otomatis saat currency/timezone berubah
     final currencyService = context.watch<CurrencyService>();
     final timezoneService = context.watch<TimezoneService>();
@@ -220,21 +222,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final selectedCurrency = currencyService.selectedCurrency;
 
     return Scaffold(
-      backgroundColor: DuoColors.background,
+      backgroundColor: palette.background,
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.directions_run_rounded, color: DuoColors.primaryBlue, size: 28),
-            SizedBox(width: 8),
+            const Icon(Icons.directions_run_rounded, color: DuoColors.primaryBlue, size: 28),
+            const SizedBox(width: 8),
             Text(
               'GLOBAL RUN',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 18),
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 18, color: palette.textPrimary),
             ),
           ],
         ),
-        backgroundColor: DuoColors.surface,
+        backgroundColor: palette.surface,
         elevation: 0,
-        shape: const Border(bottom: BorderSide(color: DuoColors.surfaceBorder, width: 2)),
+        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
           IconButton(
             icon: const Icon(Icons.videogame_asset_rounded, color: Colors.amberAccent),
@@ -324,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: const Text('🔥', style: TextStyle(fontSize: 14)),
                     label: '5 HARI',
                     borderColor: DuoColors.streakGoldShadow,
-                    backgroundColor: DuoColors.surface,
+                    backgroundColor: palette.surface,
                     textColor: DuoColors.streakGold,
                   ),
                   const SizedBox(width: 8),
@@ -333,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: const Text('💎', style: TextStyle(fontSize: 14)),
                       label: selectedCurrency,
                       borderColor: DuoColors.primaryBlueShadow,
-                      backgroundColor: DuoColors.surface,
+                      backgroundColor: palette.surface,
                       textColor: DuoColors.primaryBlue,
                     ),
                   ),
@@ -341,9 +343,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   DuoChip(
                     icon: Text(selectedTimezone.flag, style: const TextStyle(fontSize: 14)),
                     label: selectedTimezone.code,
-                    borderColor: DuoColors.surfaceBorder,
-                    backgroundColor: DuoColors.surface,
-                    textColor: Colors.white,
+                    borderColor: palette.surfaceBorder,
+                    backgroundColor: palette.surface,
+                    textColor: palette.textPrimary,
                   ),
                 ],
               ),
@@ -359,10 +361,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Icon(Icons.public_rounded, color: Colors.cyanAccent, size: 20),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Sinkronisasi Global Lintas Negara',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
                       // Tombol refresh kurs dari API
@@ -473,15 +475,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF334155),
-                                borderRadius: BorderRadius.circular(8),
+                                color: palette.background,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: palette.surfaceBorder, width: 1.5),
                               ),
                               child: DropdownButton<TimezoneModel>(
                                 isExpanded: true,
                                 value: selectedTimezone,
-                                dropdownColor: const Color(0xFF1E293B),
+                                dropdownColor: palette.surface,
                                 underline: const SizedBox(),
-                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
                                 items: timezoneService.supportedZones.map((z) {
                                   return DropdownMenuItem(
                                     value: z,
@@ -507,15 +510,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF334155),
-                                borderRadius: BorderRadius.circular(8),
+                                color: palette.background,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: palette.surfaceBorder, width: 1.5),
                               ),
                               child: DropdownButton<String>(
                                 isExpanded: true,
                                 value: selectedCurrency,
-                                dropdownColor: const Color(0xFF1E293B),
+                                dropdownColor: palette.surface,
                                 underline: const SizedBox(),
-                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
                                 items: currencyService.currencies.keys.map((c) {
                                   return DropdownMenuItem(
                                     value: c,
@@ -554,15 +558,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       );
                     },
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.smart_toy_rounded, color: DuoColors.primaryBlue, size: 28),
-                        SizedBox(width: 10),
+                        const Icon(Icons.smart_toy_rounded, color: DuoColors.primaryBlue, size: 28),
+                        const SizedBox(width: 10),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('AI COACH', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
-                            Text('Nutrisi & Taktik', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
+                            Text('AI COACH', style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 13)),
+                            const Text('Nutrisi & Taktik', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
                           ],
                         ),
                       ],
@@ -579,15 +583,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         MaterialPageRoute(builder: (_) => const MiniGameScreen()),
                       );
                     },
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.sports_esports_rounded, color: DuoColors.streakGold, size: 28),
-                        SizedBox(width: 10),
+                        const Icon(Icons.sports_esports_rounded, color: DuoColors.streakGold, size: 28),
+                        const SizedBox(width: 10),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('MINI GAME', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
-                            Text('Endless Runner', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
+                            Text('MINI GAME', style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 13)),
+                            const Text('Endless Runner', style: TextStyle(color: DuoColors.textMuted, fontSize: 11)),
                           ],
                         ),
                       ],
@@ -604,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
                 onChanged: (val) {
                   setState(() => _searchQuery = val);
                 },
@@ -634,32 +638,35 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   _buildFilterChip(
-                    label: 'Semua Lomba',
+                    label: 'Semua',
                     icon: Icons.grid_view_rounded,
                     categoryKey: 'all',
+                    palette: palette,
                   ),
                   const SizedBox(width: 8),
                   _buildFilterChip(
-                    label: 'Running (Lari)',
+                    label: 'Lari',
                     icon: Icons.directions_run_rounded,
                     categoryKey: 'run',
-                    activeColor: Colors.cyanAccent,
+                    palette: palette,
+                    activeColor: DuoColors.primaryBlue,
                   ),
                   const SizedBox(width: 8),
                   _buildFilterChip(
-                    label: 'Cycling (Sepeda)',
+                    label: 'Sepeda',
                     icon: Icons.directions_bike_rounded,
                     categoryKey: 'cycling',
-                    activeColor: Colors.orangeAccent,
+                    palette: palette,
+                    activeColor: DuoColors.streakGold,
                   ),
                 ],
               ),
             ),
 
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Jadwal Kompetisi Mendatang',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
@@ -744,14 +751,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(height: 8),
                                   Text(
                                     ev.title,
-                                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     ev.description,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white60, fontSize: 13),
+                                    style: TextStyle(color: palette.textSecondary, fontSize: 13),
                                   ),
                                   const Divider(color: Colors.white12, height: 20),
                                   Row(
@@ -761,7 +768,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text('Start (${selectedTimezone.code})', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                                          Text(raceTimeStr, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+                                          Text(raceTimeStr, style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
                                         ],
                                       ),
                                       Column(
@@ -789,7 +796,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     required IconData icon,
     required String categoryKey,
-    Color activeColor = Colors.cyanAccent,
+    required DuoColorPalette palette,
+    Color activeColor = DuoColors.primaryBlue,
   }) {
     final isSelected = _selectedCategory == categoryKey;
 
@@ -797,32 +805,44 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () {
         setState(() => _selectedCategory = categoryKey);
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withOpacity(0.2) : const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? activeColor.withOpacity(palette.isDark ? 0.20 : 0.14)
+              : palette.surface,
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? activeColor : Colors.white12,
-            width: isSelected ? 1.5 : 1,
+            color: isSelected ? activeColor : palette.surfaceBorder,
+            width: 2,
           ),
+          boxShadow: isSelected
+              ? []
+              : [
+                  BoxShadow(
+                    color: palette.surfaceShadow,
+                    offset: const Offset(0, 2),
+                    blurRadius: 0,
+                  ),
+                ],
         ),
         child: Row(
           children: [
             Icon(
               icon,
               size: 16,
-              color: isSelected ? activeColor : Colors.white60,
+              color: isSelected ? activeColor : palette.textMuted,
             ),
             const SizedBox(width: 6),
             Text(
-              label,
+              label.toUpperCase(),
               style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white60,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 12,
+                color: isSelected ? activeColor : palette.textMuted,
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+                letterSpacing: 0.5,
               ),
             ),
           ],

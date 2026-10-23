@@ -34,6 +34,7 @@ yarn-error.log*
 .pub/
 /build/
 /build_old/
+fix_issues.py
 /coverage/
 
 # Symbolication related

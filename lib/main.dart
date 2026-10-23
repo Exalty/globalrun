@@ -13,6 +13,7 @@ import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
 import 'screens/main_navigation_wrapper.dart';
 import 'theme/duo_theme.dart';
+import 'services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,9 @@ void main() async {
   final timezoneService = TimezoneService();
   await timezoneService.init();
 
+  final themeService = ThemeService();
+  await themeService.init();
+
   runApp(
     MultiProvider(
       providers: [
@@ -44,6 +48,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LocationTrackingService()),
         ChangeNotifierProvider.value(value: currencyService),
         ChangeNotifierProvider.value(value: timezoneService),
+        ChangeNotifierProvider.value(value: themeService),
       ],
       child: GlobalVirtualRaceApp(
         blockchainService: blockchainService,
@@ -103,23 +108,14 @@ class _GlobalVirtualRaceAppState extends State<GlobalVirtualRaceApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeService = context.watch<ThemeService>();
+
     return MaterialApp(
       title: 'Global Virtual Race',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: DuoColors.background,
-        colorScheme: const ColorScheme.dark(
-          primary: DuoColors.primaryBlue,
-          secondary: DuoColors.streakGold,
-          surface: DuoColors.surface,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: DuoColors.surface,
-          elevation: 0,
-        ),
-        fontFamily: 'Roboto',
-      ),
+      themeMode: themeService.themeMode,
+      theme: DuoThemeData.lightTheme,
+      darkTheme: DuoThemeData.darkTheme,
       home: _isCheckingAuth
           ? const Scaffold(
               backgroundColor: DuoColors.background,

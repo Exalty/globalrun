@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/timezone_service.dart';
+import '../services/theme_service.dart';
 import '../theme/duo_theme.dart';
 import 'notification_screen.dart';
 
@@ -17,9 +18,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final AuthService _authService = AuthService();
+  final GlobalKey _biometricSectionKey = GlobalKey();
+
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
   bool _isBiometricActive = false;
+  bool _isBiometricHighlighted = false;
 
   @override
   void initState() {
@@ -39,9 +43,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// Mengarahkan dan scroll halus ke kartu pengaturan sidik jari di halaman profil
+  void _scrollToBiometricSetting() {
+    final targetContext = _biometricSectionKey.currentContext;
+    if (targetContext != null) {
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
+      setState(() => _isBiometricHighlighted = true);
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.touch_app_rounded, color: DuoColors.primaryBlue),
+              SizedBox(width: 8),
+              Text('Mengarahkan ke menu pengaturan sidik jari...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      Future.delayed(const Duration(milliseconds: 2200), () {
+        if (mounted) setState(() => _isBiometricHighlighted = false);
+      });
+    }
+  }
+
   Future<void> _handleToggleBiometric(bool value) async {
     if (value) {
-      // Nyalakan: Minta pemindaian sidik jari untuk verifikasi kepemilikan perangkat
       final success = await _authService.setBiometricEnabled(true);
       if (success) {
         setState(() => _isBiometricActive = true);
@@ -55,7 +90,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text('Login sidik jari berhasil diaktifkan!'),
                 ],
               ),
-              backgroundColor: DuoColors.surface,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -72,14 +106,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     } else {
-      // Matikan
       await _authService.setBiometricEnabled(false);
       setState(() => _isBiometricActive = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Login sidik jari dinonaktifkan.'),
-            backgroundColor: DuoColors.surface,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -89,15 +121,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
+
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: DuoColors.background,
-        body: Center(child: CircularProgressIndicator(color: DuoColors.primaryBlue)),
+      return Scaffold(
+        backgroundColor: palette.background,
+        body: const Center(child: CircularProgressIndicator(color: DuoColors.primaryBlue)),
       );
     }
 
     final currencyService = context.watch<CurrencyService>();
     final timezoneService = context.watch<TimezoneService>();
+    final themeService = context.watch<ThemeService>();
+
     final selectedCurrency = currencyService.selectedCurrency;
     final selectedTimezone = timezoneService.selectedTimezone;
 
@@ -108,25 +144,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? _userProfile!['email']
         : 'email@kompetisi.com';
     final walletUsd = (_userProfile?['wallet'] ?? 250.0) as double;
-
     final walletFormatted = currencyService.formatCurrency(walletUsd, selectedCurrency);
 
     return Scaffold(
-      backgroundColor: DuoColors.background,
+      backgroundColor: palette.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'PROFIL ATLET',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 18),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            fontSize: 18,
+            color: palette.textPrimary,
+          ),
         ),
-        backgroundColor: DuoColors.surface,
+        backgroundColor: palette.surface,
         elevation: 0,
-        shape: const Border(bottom: BorderSide(color: DuoColors.surfaceBorder, width: 2)),
+        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Column(
           children: [
-            // 1. Athlete Card Header (Duolingo 3D style)
+            // 1. Athlete Card Header
             DuoCard(
               padding: const EdgeInsets.all(22),
               child: Column(
@@ -137,19 +177,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 90,
                         height: 90,
                         decoration: BoxDecoration(
-                          color: DuoColors.background,
+                          color: palette.background,
                           shape: BoxShape.circle,
-                          border: Border.all(color: DuoColors.primaryBlue, width: 3),
-                          boxShadow: const [
+                          border: Border.all(color: palette.primaryBlue, width: 3),
+                          boxShadow: [
                             BoxShadow(
-                              color: DuoColors.primaryBlueShadow,
-                              offset: Offset(0, 4),
+                              color: palette.primaryBlueShadow,
+                              offset: const Offset(0, 4),
                               blurRadius: 0,
                             ),
                           ],
                         ),
-                        child: const Center(
-                          child: Icon(Icons.person_rounded, size: 54, color: DuoColors.primaryBlue),
+                        child: Center(
+                          child: Icon(Icons.person_rounded, size: 54, color: palette.primaryBlue),
                         ),
                       ),
                       Positioned(
@@ -160,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           decoration: BoxDecoration(
                             color: DuoColors.questGreen,
                             shape: BoxShape.circle,
-                            border: Border.all(color: DuoColors.surface, width: 2.5),
+                            border: Border.all(color: palette.surface, width: 2.5),
                           ),
                           child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
                         ),
@@ -170,8 +210,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   Text(
                     name.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: palette.textPrimary,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -180,7 +220,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 4),
                   Text(
                     email,
-                    style: const TextStyle(color: DuoColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: palette.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -190,20 +230,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         icon: const Text('🔥', style: TextStyle(fontSize: 14)),
                         label: 'LEVEL 5 ATLET',
                         borderColor: DuoColors.streakGoldShadow,
-                        backgroundColor: DuoColors.background,
+                        backgroundColor: palette.background,
                         textColor: DuoColors.streakGold,
                       ),
                       const SizedBox(width: 8),
+                      // Chip Status Sidik Jari (Bisa diklik untuk mengarahkan ke menu sidik jari)
                       DuoChip(
                         icon: Icon(
                           _isBiometricActive ? Icons.fingerprint_rounded : Icons.lock_outline_rounded,
-                          color: _isBiometricActive ? DuoColors.questGreen : DuoColors.textMuted,
+                          color: _isBiometricActive ? DuoColors.questGreen : palette.textMuted,
                           size: 16,
                         ),
                         label: _isBiometricActive ? 'SIDIK JARI AKTIF' : 'SIDIK JARI MATI',
-                        borderColor: _isBiometricActive ? DuoColors.questGreenShadow : DuoColors.surfaceBorder,
-                        backgroundColor: DuoColors.background,
-                        textColor: _isBiometricActive ? DuoColors.questGreen : DuoColors.textMuted,
+                        borderColor: _isBiometricActive ? DuoColors.questGreenShadow : palette.surfaceBorder,
+                        backgroundColor: palette.background,
+                        textColor: _isBiometricActive ? DuoColors.questGreen : palette.textMuted,
+                        onTap: _scrollToBiometricSetting, // <--- LANGSUNG SCROLL KE PENGATURAN SIDIK JARI
                       ),
                     ],
                   ),
@@ -213,7 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 18),
 
-            // 2. DOMPET DIGITAL (Race Wallet) - Duolingo 3D
+            // 2. DOMPET DIGITAL (Race Wallet)
             DuoCard(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -222,10 +264,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'DOMPET DIGITAL (RACE WALLET)',
                         style: TextStyle(
-                          color: DuoColors.textSecondary,
+                          color: palette.textSecondary,
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.8,
@@ -234,14 +276,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: DuoColors.primaryBlue.withOpacity(0.18),
+                          color: palette.primaryBlue.withOpacity(palette.isDark ? 0.18 : 0.12),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: DuoColors.primaryBlue, width: 1.5),
+                          border: Border.all(color: palette.primaryBlue, width: 1.5),
                         ),
                         child: Text(
                           selectedCurrency,
-                          style: const TextStyle(
-                            color: DuoColors.primaryBlue,
+                          style: TextStyle(
+                            color: palette.primaryBlue,
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
                           ),
@@ -259,8 +301,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Text(
                             walletFormatted,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: palette.textPrimary,
                               fontSize: 24,
                               fontWeight: FontWeight.w900,
                             ),
@@ -268,8 +310,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           if (selectedCurrency != 'USD')
                             Text(
                               '≈ \$${walletUsd.toStringAsFixed(2)} USD',
-                              style: const TextStyle(
-                                color: DuoColors.textMuted,
+                              style: TextStyle(
+                                color: palette.textMuted,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -290,7 +332,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Top-up saldo berhasil disimulasikan!'),
-                          backgroundColor: DuoColors.surface,
                           behavior: SnackBarBehavior.floating,
                         ),
                       );
@@ -302,7 +343,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 18),
 
-            // 3. PENGATURAN MATA UANG & ZONA WAKTU (Duolingo 3D)
+            // 3. PENGATURAN TEMA APLIKASI (LIGHT MODE / DARK MODE)
+            DuoCard(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: themeService.isDarkMode
+                                  ? DuoColors.streakGold.withOpacity(0.18)
+                                  : palette.primaryBlue.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Icon(
+                              themeService.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                              color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'TEMA TAMPILAN',
+                                style: TextStyle(
+                                  color: palette.textPrimary,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                themeService.isDarkMode ? 'Mode Gelap (Dark Mode)' : 'Mode Terang (Light Mode)',
+                                style: TextStyle(
+                                  color: themeService.isDarkMode ? DuoColors.streakGold : palette.primaryBlue,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Switch(
+                        value: themeService.isDarkMode,
+                        activeColor: DuoColors.streakGold,
+                        inactiveThumbColor: palette.primaryBlue,
+                        inactiveTrackColor: palette.primaryBlue.withOpacity(0.3),
+                        onChanged: (bool isDark) {
+                          themeService.setDarkMode(isDark);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Segmented Chunky 3D Duolingo Button untuk Ganti Tema
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildThemeSelectButton(
+                          title: '🌙 MODE GELAP',
+                          isSelected: themeService.isDarkMode,
+                          palette: palette,
+                          onTap: () => themeService.setDarkMode(true),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildThemeSelectButton(
+                          title: '☀️ MODE TERANG',
+                          isSelected: !themeService.isDarkMode,
+                          palette: palette,
+                          onTap: () => themeService.setDarkMode(false),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            // 4. PENGATURAN MATA UANG & ZONA WAKTU
             DuoCard(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -313,25 +449,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: DuoColors.primaryBlue.withOpacity(0.18),
+                          color: palette.primaryBlue.withOpacity(palette.isDark ? 0.18 : 0.12),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: DuoColors.primaryBlue, width: 1.5),
+                          border: Border.all(color: palette.primaryBlue, width: 1.5),
                         ),
-                        child: const Icon(Icons.currency_exchange_rounded, color: DuoColors.primaryBlue, size: 20),
+                        child: Icon(Icons.currency_exchange_rounded, color: palette.primaryBlue, size: 20),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'MATA UANG & ZONA WAKTU',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
+                              style: TextStyle(
+                                color: palette.textPrimary,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
                             Text(
                               'Sinkronisasi API global kompetisi',
-                              style: TextStyle(color: DuoColors.textMuted, fontSize: 11),
+                              style: TextStyle(color: palette.textMuted, fontSize: 11),
                             ),
                           ],
                         ),
@@ -349,24 +490,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Pilihan Mata Uang
-                  const Text(
+                  Text(
                     'MATA UANG AKTIF',
-                    style: TextStyle(color: DuoColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                    style: TextStyle(
+                      color: palette.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
-                      color: DuoColors.background,
+                      color: palette.background,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: DuoColors.surfaceBorder, width: 2),
+                      border: Border.all(color: palette.surfaceBorder, width: 2),
                     ),
                     child: DropdownButton<String>(
                       isExpanded: true,
                       value: selectedCurrency,
-                      dropdownColor: DuoColors.surface,
+                      dropdownColor: palette.surface,
                       underline: const SizedBox(),
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
                       items: currencyService.currencies.keys.map((c) {
                         final rate = currencyService.currencies[c]!;
                         return DropdownMenuItem(
@@ -375,13 +521,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             children: [
                               Text(
                                 rate.symbol,
-                                style: const TextStyle(color: DuoColors.primaryBlue, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: TextStyle(color: palette.primaryBlue, fontWeight: FontWeight.bold, fontSize: 16),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   '${rate.code} — ${rate.name}',
-                                  style: const TextStyle(fontSize: 13),
+                                  style: TextStyle(color: palette.textPrimary, fontSize: 13),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -409,24 +555,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 14),
 
                   // Pilihan Zona Waktu
-                  const Text(
+                  Text(
                     'ZONA WAKTU AKTIF',
-                    style: TextStyle(color: DuoColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                    style: TextStyle(
+                      color: palette.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
-                      color: DuoColors.background,
+                      color: palette.background,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: DuoColors.surfaceBorder, width: 2),
+                      border: Border.all(color: palette.surfaceBorder, width: 2),
                     ),
                     child: DropdownButton<TimezoneModel>(
                       isExpanded: true,
                       value: selectedTimezone,
-                      dropdownColor: DuoColors.surface,
+                      dropdownColor: palette.surface,
                       underline: const SizedBox(),
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
                       items: timezoneService.supportedZones.map((z) {
                         return DropdownMenuItem(
                           value: z,
@@ -437,7 +588,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: Text(
                                   '${z.code} (${timezoneService.getOffsetLabel(z)})',
-                                  style: const TextStyle(fontSize: 13),
+                                  style: TextStyle(color: palette.textPrimary, fontSize: 13),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -469,12 +620,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     text: (currencyService.isLoading || timezoneService.isLoading)
                         ? 'MEMPERBARUI DARI API...'
                         : 'PERBARUI KURS & ZONA WAKTU',
-                    backgroundColor: DuoColors.secondaryButton,
-                    shadowColor: DuoColors.secondaryButtonShadow,
-                    textColor: DuoColors.primaryBlue,
+                    backgroundColor: palette.secondaryButton,
+                    shadowColor: palette.secondaryButtonShadow,
+                    textColor: palette.primaryBlue,
                     height: 46,
                     isLoading: (currencyService.isLoading || timezoneService.isLoading),
-                    icon: const Icon(Icons.refresh_rounded, color: DuoColors.primaryBlue, size: 20),
+                    icon: Icon(Icons.refresh_rounded, color: palette.primaryBlue, size: 20),
                     onPressed: (currencyService.isLoading || timezoneService.isLoading)
                         ? null
                         : () async {
@@ -504,7 +655,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                                     ],
                                   ),
-                                  backgroundColor: DuoColors.surface,
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -517,86 +667,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 18),
 
-            // 4. PENGATURAN BIOMETRIK FINGERPRINT (Duolingo 3D)
-            DuoCard(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: _isBiometricActive
-                                  ? DuoColors.primaryBlue.withOpacity(0.18)
-                                  : DuoColors.background,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _isBiometricActive ? DuoColors.primaryBlue : DuoColors.surfaceBorder,
-                                width: 1.5,
+            // 5. PENGATURAN BIOMETRIK FINGERPRINT (Duolingo 3D dengan Key Scroll)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: _isBiometricHighlighted
+                    ? [
+                        BoxShadow(
+                          color: palette.primaryBlue.withOpacity(0.5),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : [],
+              ),
+              child: DuoCard(
+                key: _biometricSectionKey, // Key untuk Scrollable.ensureVisible
+                borderColor: _isBiometricHighlighted ? palette.primaryBlue : palette.surfaceBorder,
+                shadowColor: _isBiometricHighlighted ? palette.primaryBlueShadow : palette.surfaceShadow,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_isBiometricHighlighted) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: palette.primaryBlue.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: palette.primaryBlue, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.touch_app_rounded, color: palette.primaryBlue, size: 14),
+                            const SizedBox(width: 6),
+                            Text(
+                              'PENGATURAN SIDIK JARI TERPILIH',
+                              style: TextStyle(
+                                color: palette.primaryBlue,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 10,
+                                letterSpacing: 0.5,
                               ),
                             ),
-                            child: Icon(
-                              Icons.fingerprint_rounded,
-                              color: _isBiometricActive ? DuoColors.primaryBlue : DuoColors.textMuted,
-                              size: 26,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'LOGIN SIDIK JARI',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _isBiometricActive ? 'Status: Aktif' : 'Status: Nonaktif',
-                                style: TextStyle(
-                                  color: _isBiometricActive ? DuoColors.questGreen : DuoColors.textMuted,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Switch(
-                        value: _isBiometricActive,
-                        activeColor: DuoColors.primaryBlue,
-                        onChanged: (bool value) => _handleToggleBiometric(value),
+                          ],
+                        ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _isBiometricActive
-                        ? 'Aktif — Anda dapat login langsung menggunakan sidik jari yang terdaftar di HP Anda.'
-                        : 'Nonaktif — Nyalakan saklar untuk mengaktifkan login cepat dengan sidik jari.',
-                    style: const TextStyle(color: DuoColors.textSecondary, fontSize: 12, height: 1.4),
-                  ),
-                ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: _isBiometricActive
+                                    ? palette.primaryBlue.withOpacity(palette.isDark ? 0.18 : 0.12)
+                                    : palette.background,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _isBiometricActive ? palette.primaryBlue : palette.surfaceBorder,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.fingerprint_rounded,
+                                color: _isBiometricActive ? palette.primaryBlue : palette.textMuted,
+                                size: 26,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'LOGIN SIDIK JARI',
+                                  style: TextStyle(
+                                    color: palette.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _isBiometricActive ? 'Status: Aktif' : 'Status: Nonaktif',
+                                  style: TextStyle(
+                                    color: _isBiometricActive ? DuoColors.questGreen : palette.textMuted,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Switch(
+                          value: _isBiometricActive,
+                          activeColor: palette.primaryBlue,
+                          onChanged: (bool value) => _handleToggleBiometric(value),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _isBiometricActive
+                          ? 'Aktif — Anda dapat login langsung menggunakan sidik jari yang terdaftar di HP Anda.'
+                          : 'Nonaktif — Nyalakan saklar untuk mengaktifkan login cepat dengan sidik jari.',
+                      style: TextStyle(color: palette.textSecondary, fontSize: 12, height: 1.4),
+                    ),
+                  ],
+                ),
               ),
             ),
 
             const SizedBox(height: 18),
 
-            // 5. Race Career Statistics (Duolingo 3D)
+            // 6. Race Career Statistics
             DuoCard(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'STATISTIK KOMPETISI',
                     style: TextStyle(
-                      color: DuoColors.textSecondary,
+                      color: palette.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -606,9 +806,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatColumn('Total Jarak', '42.5 KM', Icons.route_rounded, DuoColors.primaryBlue),
-                      _buildStatColumn('Race Diikuti', '5 Acara', Icons.emoji_events_rounded, DuoColors.streakGold),
-                      _buildStatColumn('Medali NFT', '3 Dicetak', Icons.military_tech_rounded, DuoColors.neonCyan),
+                      _buildStatColumn('Total Jarak', '42.5 KM', Icons.route_rounded, palette.primaryBlue, palette),
+                      _buildStatColumn('Race Diikuti', '5 Acara', Icons.emoji_events_rounded, DuoColors.streakGold, palette),
+                      _buildStatColumn('Medali NFT', '3 Dicetak', Icons.military_tech_rounded, palette.neonCyan, palette),
                     ],
                   ),
                 ],
@@ -617,7 +817,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 18),
 
-            // 6. Shortcut Pusat Notifikasi Mobile (Duolingo 3D)
+            // 7. Shortcut Pusat Notifikasi Mobile
             DuoCard(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               onTap: () {
@@ -631,44 +831,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: DuoColors.primaryBlue.withOpacity(0.18),
+                      color: palette.primaryBlue.withOpacity(palette.isDark ? 0.18 : 0.12),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: DuoColors.primaryBlue, width: 1.5),
+                      border: Border.all(color: palette.primaryBlue, width: 1.5),
                     ),
-                    child: const Icon(Icons.notifications_active_rounded, color: DuoColors.primaryBlue, size: 22),
+                    child: Icon(Icons.notifications_active_rounded, color: palette.primaryBlue, size: 22),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'PUSAT NOTIFIKASI MOBILE',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
+                          style: TextStyle(
+                            color: palette.textPrimary,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Push alert race, flag-off, & AI Coach',
-                          style: TextStyle(color: DuoColors.textMuted, fontSize: 11),
+                          style: TextStyle(color: palette.textMuted, fontSize: 11),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: DuoColors.textMuted),
+                  Icon(Icons.chevron_right_rounded, color: palette.textMuted),
                 ],
               ),
             ),
 
             const SizedBox(height: 24),
 
-            // 7. Logout 3D Button (Duolingo Red Button)
+            // 8. Logout 3D Button (Duolingo Red Button)
             DuoButton(
               text: 'LOGOUT DARI AKUN',
               backgroundColor: DuoColors.heartRed,
               shadowColor: DuoColors.heartRedShadow,
               height: 50,
               icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
-              onPressed: () => _confirmLogout(context),
+              onPressed: () => _confirmLogout(context, palette),
             ),
 
             const SizedBox(height: 20),
@@ -678,27 +883,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _confirmLogout(BuildContext context) {
+  Widget _buildThemeSelectButton({
+    required String title,
+    required bool isSelected,
+    required DuoColorPalette palette,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? palette.primaryBlue.withOpacity(palette.isDark ? 0.20 : 0.15)
+              : palette.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? palette.primaryBlue : palette.surfaceBorder,
+            width: 2.0,
+          ),
+          boxShadow: isSelected
+              ? []
+              : [
+                  BoxShadow(
+                    color: palette.surfaceShadow,
+                    offset: const Offset(0, 2),
+                    blurRadius: 0,
+                  ),
+                ],
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? palette.primaryBlue : palette.textMuted,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context, DuoColorPalette palette) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DuoColors.surface,
+        backgroundColor: palette.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: DuoColors.surfaceBorder, width: 2),
+          side: BorderSide(color: palette.surfaceBorder, width: 2),
         ),
-        title: const Text(
+        title: Text(
           'Keluar dari Aplikasi',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+          style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900),
         ),
-        content: const Text(
+        content: Text(
           'Pilih aksi keluar:\n\n• "Logout": Keluar sesi akun saat ini.\n• "Hapus Akun & Reset": Membersihkan seluruh data sesi agar Anda dapat mendaftar akun baru dari awal.',
-          style: TextStyle(color: DuoColors.textSecondary, fontSize: 13, height: 1.4),
+          style: TextStyle(color: palette.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal', style: TextStyle(color: DuoColors.textMuted, fontWeight: FontWeight.bold)),
+            child: Text('Batal', style: TextStyle(color: palette.textMuted, fontWeight: FontWeight.bold)),
           ),
           OutlinedButton(
             onPressed: () async {
@@ -728,16 +978,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatColumn(String label, String value, IconData icon, Color color) {
+  Widget _buildStatColumn(String label, String value, IconData icon, Color color, DuoColorPalette palette) {
     return Column(
       children: [
         Icon(icon, color: color, size: 28),
         const SizedBox(height: 8),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+        Text(value, style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.w900)),
         const SizedBox(height: 2),
         Text(
           label.toUpperCase(),
-          style: const TextStyle(color: DuoColors.textMuted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+          style: TextStyle(color: palette.textMuted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
         ),
       ],
     );

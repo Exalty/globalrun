@@ -171,8 +171,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
+
     return Scaffold(
-      backgroundColor: DuoColors.background,
+      backgroundColor: palette.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -206,10 +208,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                const Text(
+                Text(
                   'GLOBAL RUN',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: palette.textPrimary,
                     fontWeight: FontWeight.w900,
                     fontSize: 24,
                     letterSpacing: 1.8,
@@ -234,9 +236,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: DuoColors.background,
+                          color: palette.background,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: DuoColors.surfaceBorder, width: 1.5),
+                          border: Border.all(color: palette.surfaceBorder, width: 1.5),
                         ),
                         child: Row(
                           children: [
@@ -279,6 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: 'Nama Lengkap',
                           hint: 'Contoh: Bima Perkasa',
                           icon: Icons.person_rounded,
+                          palette: palette,
                         ),
                         const SizedBox(height: 14),
                       ],
@@ -289,6 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         hint: 'contoh@domain.com',
                         icon: Icons.alternate_email_rounded,
                         keyboardType: TextInputType.emailAddress,
+                        palette: palette,
                       ),
                       const SizedBox(height: 14),
 
@@ -298,6 +302,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         hint: '••••••••',
                         icon: Icons.lock_outline_rounded,
                         obscureText: true,
+                        palette: palette,
                       ),
 
                       if (_errorMessage != null) ...[
@@ -423,6 +428,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required String label,
     required String hint,
     required IconData icon,
+    required DuoColorPalette palette,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
@@ -431,8 +437,8 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Text(
           label.toUpperCase(),
-          style: const TextStyle(
-            color: DuoColors.textSecondary,
+          style: TextStyle(
+            color: palette.textSecondary,
             fontSize: 11,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.8,
@@ -443,21 +449,21 @@ class _LoginScreenState extends State<LoginScreen> {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: DuoColors.textMuted, fontSize: 13),
-            prefixIcon: Icon(icon, color: DuoColors.primaryBlue, size: 20),
+            hintStyle: TextStyle(color: palette.textMuted, fontSize: 13),
+            prefixIcon: Icon(icon, color: palette.primaryBlue, size: 20),
             filled: true,
-            fillColor: DuoColors.background,
+            fillColor: palette.background,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: DuoColors.surfaceBorder, width: 2),
+              borderSide: BorderSide(color: palette.surfaceBorder, width: 2),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: DuoColors.primaryBlue, width: 2),
+              borderSide: BorderSide(color: palette.primaryBlue, width: 2),
             ),
           ),
         ),

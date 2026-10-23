@@ -70,16 +70,23 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
+
     return Scaffold(
-      backgroundColor: DuoColors.background,
+      backgroundColor: palette.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'SARAN & KESAN',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 18),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            fontSize: 18,
+            color: palette.textPrimary,
+          ),
         ),
-        backgroundColor: DuoColors.surface,
+        backgroundColor: palette.surface,
         elevation: 0,
-        shape: const Border(bottom: BorderSide(color: DuoColors.surfaceBorder, width: 2)),
+        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -95,32 +102,32 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: DuoColors.primaryBlue.withOpacity(0.18),
+                      color: palette.primaryBlue.withOpacity(palette.isDark ? 0.18 : 0.12),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: DuoColors.primaryBlue, width: 2),
+                      border: Border.all(color: palette.primaryBlue, width: 2),
                     ),
-                    child: const Center(
-                      child: Icon(Icons.school_rounded, color: DuoColors.primaryBlue, size: 28),
+                    child: Center(
+                      child: Icon(Icons.school_rounded, color: palette.primaryBlue, size: 28),
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'PEMROGRAMAN APLIKASI MOBILE',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: palette.textPrimary,
                             fontWeight: FontWeight.w900,
                             fontSize: 13,
                             letterSpacing: 0.5,
                           ),
                         ),
-                        SizedBox(height: 3),
+                        const SizedBox(height: 3),
                         Text(
                           'Evaluasi pengalaman belajar & pengembangan proyek Tugas Akhir',
-                          style: TextStyle(color: DuoColors.textSecondary, fontSize: 11),
+                          style: TextStyle(color: palette.textSecondary, fontSize: 11),
                         ),
                       ],
                     ),
@@ -137,10 +144,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'RATING PENGALAMAN KULIAH',
                     style: TextStyle(
-                      color: DuoColors.textSecondary,
+                      color: palette.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -158,17 +165,17 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isFilled
-                                ? DuoColors.streakGold.withOpacity(0.15)
-                                : DuoColors.background,
+                                ? DuoColors.streakGold.withOpacity(0.18)
+                                : palette.background,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isFilled ? DuoColors.streakGold : DuoColors.surfaceBorder,
+                              color: isFilled ? DuoColors.streakGold : palette.surfaceBorder,
                               width: 2,
                             ),
                           ),
                           child: Icon(
                             isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
-                            color: isFilled ? DuoColors.streakGold : DuoColors.textMuted,
+                            color: isFilled ? DuoColors.streakGold : palette.textMuted,
                             size: 30,
                           ),
                         ),
@@ -187,10 +194,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'KESAN SELAMA PERKULIAHAN',
                     style: TextStyle(
-                      color: DuoColors.textSecondary,
+                      color: palette.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -200,20 +207,20 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   TextField(
                     controller: _kesanController,
                     maxLines: 4,
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
                       hintText: 'Tuliskan kesan menarik, tantangan, atau pengalaman berharga saat mengikuti kuliah...',
-                      hintStyle: const TextStyle(color: DuoColors.textMuted, fontSize: 12),
+                      hintStyle: TextStyle(color: palette.textMuted, fontSize: 12),
                       filled: true,
-                      fillColor: DuoColors.background,
+                      fillColor: palette.background,
                       contentPadding: const EdgeInsets.all(14),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: DuoColors.surfaceBorder, width: 2),
+                        borderSide: BorderSide(color: palette.surfaceBorder, width: 2),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: DuoColors.primaryBlue, width: 2),
+                        borderSide: BorderSide(color: palette.primaryBlue, width: 2),
                       ),
                     ),
                   ),
@@ -229,10 +236,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'SARAN & MASUKAN PERKULIAHAN',
                     style: TextStyle(
-                      color: DuoColors.textSecondary,
+                      color: palette.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -242,20 +249,20 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   TextField(
                     controller: _saranController,
                     maxLines: 4,
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
                       hintText: 'Tuliskan kritik dan saran konstruktif untuk materi, praktikum, atau fasilitas...',
-                      hintStyle: const TextStyle(color: DuoColors.textMuted, fontSize: 12),
+                      hintStyle: TextStyle(color: palette.textMuted, fontSize: 12),
                       filled: true,
-                      fillColor: DuoColors.background,
+                      fillColor: palette.background,
                       contentPadding: const EdgeInsets.all(14),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: DuoColors.surfaceBorder, width: 2),
+                        borderSide: BorderSide(color: palette.surfaceBorder, width: 2),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: DuoColors.primaryBlue, width: 2),
+                        borderSide: BorderSide(color: palette.primaryBlue, width: 2),
                       ),
                     ),
                   ),
