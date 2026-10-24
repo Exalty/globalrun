@@ -569,22 +569,21 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: palette.background,
       appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(Icons.directions_run_rounded, color: DuoColors.primaryBlue, size: 28),
-            const SizedBox(width: 8),
-            Text(
-              'GLOBAL RUN',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 18, color: palette.textPrimary),
-            ),
-          ],
+        title: Text(
+          'GLOBAL RUN',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            fontSize: 18,
+            color: palette.textPrimary,
+          ),
         ),
         backgroundColor: palette.surface,
         elevation: 0,
         shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.military_tech_rounded, color: Colors.cyanAccent),
+            icon: const Icon(Icons.military_tech_rounded, color: DuoColors.streakGold),
             tooltip: 'Blockchain Medals NFT',
             onPressed: () {
               Navigator.push(

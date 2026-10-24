@@ -247,55 +247,18 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
       backgroundColor: palette.background,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+        title: Text(
+          'COACH RANI',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            fontSize: 18,
+            color: palette.textPrimary,
+          ),
+        ),
         backgroundColor: palette.surface,
         elevation: 0,
-        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 1.5)),
-        titleSpacing: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: palette.primaryBlue.withOpacity(palette.isDark ? 0.20 : 0.12),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: palette.primaryBlue.withOpacity(0.4), width: 1.5),
-              ),
-              child: Icon(Icons.psychology_rounded, color: palette.primaryBlue, size: 20),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Rani',
-                    style: TextStyle(
-                      color: palette.textPrimary,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                      letterSpacing: 0.3,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'AI Coach',
-                    style: TextStyle(
-                      color: palette.primaryBlue,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
           Center(
             child: InkWell(

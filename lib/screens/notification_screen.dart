@@ -71,37 +71,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Scaffold(
           backgroundColor: palette.background,
           appBar: AppBar(
+            iconTheme: IconThemeData(color: palette.textPrimary),
             backgroundColor: palette.surface,
             elevation: 0,
             shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
-            title: Row(
-              children: [
-                Icon(Icons.notifications_active_rounded, color: palette.primaryBlue, size: 24),
-                const SizedBox(width: 10),
-                Text(
-                  'NOTIFIKASI LOMBA',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.1,
-                    fontSize: 16,
-                    color: palette.textPrimary,
-                  ),
-                ),
-                if (_notificationService.unreadCount > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: DuoColors.heartRed,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${_notificationService.unreadCount}',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
-                    ),
-                  ),
-                ],
-              ],
+            title: Text(
+              'NOTIFIKASI LOMBA',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                fontSize: 18,
+                color: palette.textPrimary,
+              ),
             ),
             actions: [
               if (allNotifs.isNotEmpty)

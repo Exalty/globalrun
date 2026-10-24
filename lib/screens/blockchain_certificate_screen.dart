@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/blockchain_record.dart';
 import '../services/blockchain_service.dart';
+import '../theme/duo_theme.dart';
 
 class BlockchainCertificateScreen extends StatefulWidget {
   final BlockchainService blockchainService;
@@ -108,12 +109,24 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
   Widget build(BuildContext context) {
     final chain = widget.blockchainService.chain;
 
+    final palette = DuoColors.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: palette.background,
       appBar: AppBar(
-        title: const Text('Blockchain Ledger & Medals', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF1E293B),
+        iconTheme: IconThemeData(color: palette.textPrimary),
+        title: Text(
+          'SERTIFIKAT & MEDALI',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            fontSize: 18,
+            color: palette.textPrimary,
+          ),
+        ),
+        backgroundColor: palette.surface,
         elevation: 0,
+        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),

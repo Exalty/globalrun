@@ -596,6 +596,20 @@ class _MiniGameScreenState extends State<MiniGameScreen>
       },
       child: Scaffold(
         backgroundColor: palette.background,
+        appBar: AppBar(
+          title: Text(
+            'MINI GAME',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              fontSize: 18,
+              color: palette.textPrimary,
+            ),
+          ),
+          backgroundColor: palette.surface,
+          elevation: 0,
+          shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
+        ),
         body: Column(
           children: [
             _buildHud(palette),
@@ -749,11 +763,9 @@ class _MiniGameScreenState extends State<MiniGameScreen>
           ),
         ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
             children: [
               // Skor & Rekor
               Expanded(
@@ -814,7 +826,6 @@ class _MiniGameScreenState extends State<MiniGameScreen>
             ],
           ),
         ),
-      ),
     );
   }
 
