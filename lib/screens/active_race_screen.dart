@@ -350,7 +350,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                     // Hanya marker yang rebuild saat kompas berubah
                     child: ValueListenableBuilder<double>(
                       valueListenable: location.heading,
-                      builder: (_, deg, __) => Transform.rotate(
+                      builder: (_, deg, child) => Transform.rotate(
                         angle: deg * pi / 180.0,
                         child: _buildArrow(),
                       ),

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -7,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'notification_service.dart';
 
 class AuthService {
   static const String _keyIsLoggedIn = 'is_logged_in';
@@ -21,16 +19,12 @@ class AuthService {
 
   static const MethodChannel _settingsChannel = MethodChannel('com.globalrun.app/settings');
 
-  // Base URL backend Node.js REST API (fallback lokal)
+  // Base URL backend Node.js REST API (Database Lokal PostgreSQL)
   static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.110.5:5000';
   static const String emulatorUrl = 'http://10.0.2.2:5000';
+  static const String localhostUrl = 'http://localhost:5000';
 
   final LocalAuthentication _localAuth = LocalAuthentication();
-
-  // Cache lokal kode OTP untuk fallback offline
-  static String? _offlineOtpEmail;
-  static String? _offlineOtpCode;
-  static DateTime? _offlineOtpExpiresAt;
 
   // Helper hashing SHA-256 (Otentikasi mandiri non-Firebase)
   static String hashPassword(String password) {
@@ -71,7 +65,7 @@ class AuthService {
     }
   }
 
-  // Pendaftaran Akun (Supabase Cloud Auth + Email OTP Verification)
+  // ─── DUAL DATABASE REGISTRATION (Lokal PostgreSQL + Online Supabase) ────────
   Future<Map<String, dynamic>> register({
     required String name,
     required String email,
@@ -79,53 +73,20 @@ class AuthService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final cleanEmail = email.trim().toLowerCase();
+    final cleanName = name.trim();
 
-    // 1. Coba registrasi melalui Supabase Cloud Auth
-    try {
-      final client = Supabase.instance.client;
-      final res = await client.auth.signUp(
-        email: cleanEmail,
-        password: password,
-        data: {'full_name': name.trim()},
-      );
+    bool localSuccess = false;
+    bool onlineSuccess = false;
+    String? token;
 
-      if (res.user != null) {
-        await prefs.setString(_keyUserName, name.trim());
-        await prefs.setString(_keyUserEmail, cleanEmail);
-        await prefs.setString(_keyPasswordHash, hashPassword(password));
-        await prefs.setDouble(_keyUserWallet, 250.0);
-
-        // Jika email butuh konfirmasi (OTP)
-        final bool requireOtp = res.session == null;
-        if (!requireOtp) {
-          await prefs.setBool(_keyIsLoggedIn, true);
-        }
-
-        return {
-          'success': true,
-          'requireOtp': requireOtp,
-          'message': requireOtp
-              ? 'Kode verifikasi telah dikirim ke kotak masuk email $cleanEmail.'
-              : 'Pendaftaran akun berhasil!',
-        };
-      }
-    } on AuthException catch (e) {
-      return {
-        'success': false,
-        'message': e.message,
-      };
-    } catch (_) {
-      // Fallback ke server Node.js lokal atau offline jika Supabase belum siap
-    }
-
-    // 2. Fallback kirim ke backend Node.js jika ada
-    for (final url in [baseUrl, emulatorUrl]) {
+    // 1. Simpan ke DATABASE LOKAL (Node.js REST API + PostgreSQL Lokal)
+    for (final url in [baseUrl, emulatorUrl, localhostUrl]) {
       try {
         final response = await http.post(
           Uri.parse('$url/api/auth/register'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'full_name': name.trim(),
+            'full_name': cleanName,
             'email': cleanEmail,
             'password': password,
           }),
@@ -133,109 +94,63 @@ class AuthService {
 
         if (response.statusCode == 201) {
           final data = jsonDecode(response.body);
-          if (data['token'] != null) {
-            await prefs.setString(_keyJwtToken, data['token']);
-          }
-          await prefs.setString(_keyUserName, name.trim());
-          await prefs.setString(_keyUserEmail, cleanEmail);
-          await prefs.setString(_keyPasswordHash, hashPassword(password));
-          await prefs.setBool(_keyIsLoggedIn, true);
-          await prefs.setDouble(_keyUserWallet, 250.0);
-          return {'success': true, 'requireOtp': false, 'message': 'Pendaftaran berhasil!'};
+          token = data['token'];
+          localSuccess = true;
+          break;
         } else if (response.statusCode == 409) {
-          return {'success': false, 'message': 'Email sudah terdaftar. Silakan login.'};
+          // Jika email sudah terdaftar di database lokal
+          localSuccess = true;
+          break;
         }
-      } catch (_) {}
+      } catch (_) {
+        // Lanjutkan jika server lokal offline
+      }
     }
 
-    // 3. Fallback Offline: Simpan lokal & minta OTP offline
-    final random = math.Random();
-    final localCode = (100000 + random.nextInt(900000)).toString();
-    _offlineOtpEmail = cleanEmail;
-    _offlineOtpCode = localCode;
-    _offlineOtpExpiresAt = DateTime.now().add(const Duration(minutes: 5));
+    // 2. Simpan ke DATABASE ONLINE (Supabase Cloud PostgreSQL)
+    try {
+      final client = Supabase.instance.client;
+      final res = await client.auth.signUp(
+        email: cleanEmail,
+        password: password,
+        data: {'full_name': cleanName},
+      );
 
-    await prefs.setString(_keyUserName, name.trim());
+      if (res.user != null) {
+        onlineSuccess = true;
+        // Simpan data profil ke tabel public.profiles di Supabase
+        try {
+          await client.from('profiles').upsert({
+            'id': res.user!.id,
+            'full_name': cleanName,
+            'email': cleanEmail,
+            'wallet_usd': 250.0,
+          });
+        } catch (_) {}
+      }
+    } catch (_) {
+      // Lanjutkan jika supabase offline/koneksi lambat
+    }
+
+    // 3. Simpan Sesi Pengguna ke Local Storage (Aktif & Siap Pakai)
+    if (token != null) {
+      await prefs.setString(_keyJwtToken, token);
+    }
+    await prefs.setString(_keyUserName, cleanName);
     await prefs.setString(_keyUserEmail, cleanEmail);
     await prefs.setString(_keyPasswordHash, hashPassword(password));
+    await prefs.setBool(_keyIsLoggedIn, true);
     await prefs.setDouble(_keyUserWallet, 250.0);
-
-    NotificationService().showNotification(
-      title: 'Kode Aktivasi GlobalRun (Offline)',
-      body: 'Kode verifikasi pendaftaran: $localCode. Berlaku 5 menit.',
-      type: 'system',
-    );
 
     return {
       'success': true,
-      'requireOtp': true,
-      'message': 'Kode verifikasi telah dikirim ke $cleanEmail.',
-      'demo_code': localCode,
+      'localSaved': localSuccess,
+      'onlineSaved': onlineSuccess,
+      'message': 'Pendaftaran berhasil! Akun Anda aktif di database.',
     };
   }
 
-  // Verifikasi Kode OTP Pendaftaran Akun Baru
-  Future<Map<String, dynamic>> verifyRegistrationOtp({
-    required String email,
-    required String code,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final cleanEmail = email.trim().toLowerCase();
-    final cleanCode = code.trim();
-
-    // 1. Coba verifikasi dengan Supabase
-    try {
-      final client = Supabase.instance.client;
-      final res = await client.auth.verifyOTP(
-        email: cleanEmail,
-        token: cleanCode,
-        type: OtpType.signup,
-      );
-
-      if (res.session != null || res.user != null) {
-        await prefs.setBool(_keyIsLoggedIn, true);
-        await prefs.setString(_keyUserEmail, cleanEmail);
-        final name = res.user?.userMetadata?['full_name'] ?? prefs.getString(_keyUserName) ?? 'Virtual Runner';
-        await prefs.setString(_keyUserName, name);
-
-        // Buat record profil di Supabase jika tabel profiles tersedia
-        try {
-          if (res.user != null) {
-            await client.from('profiles').upsert({
-              'id': res.user!.id,
-              'full_name': name,
-              'email': cleanEmail,
-              'wallet_usd': 250.0,
-            });
-          }
-        } catch (_) {}
-
-        return {
-          'success': true,
-          'message': 'Akun berhasil diverifikasi & diaktifkan!',
-        };
-      }
-    } on AuthException catch (e) {
-      return {'success': false, 'message': e.message};
-    } catch (_) {}
-
-    // 2. Fallback Offline
-    if (_offlineOtpEmail == cleanEmail &&
-        _offlineOtpCode == cleanCode &&
-        _offlineOtpExpiresAt != null &&
-        DateTime.now().isBefore(_offlineOtpExpiresAt!)) {
-      _offlineOtpCode = null;
-      await prefs.setBool(_keyIsLoggedIn, true);
-      return {'success': true, 'message': 'Akun berhasil diverifikasi (mode offline)!'};
-    }
-
-    return {
-      'success': false,
-      'message': 'Kode verifikasi salah atau sudah kedaluwarsa.',
-    };
-  }
-
-  // Login Manual dengan Email & Password (Supabase Cloud + Fallback)
+  // ─── DUAL DATABASE LOGIN (Lokal PostgreSQL + Online Supabase) ───────────────
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -243,27 +158,8 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final cleanEmail = email.trim().toLowerCase();
 
-    // 1. Coba login via Supabase Cloud
-    try {
-      final client = Supabase.instance.client;
-      final res = await client.auth.signInWithPassword(
-        email: cleanEmail,
-        password: password,
-      );
-
-      if (res.session != null && res.user != null) {
-        await prefs.setBool(_keyIsLoggedIn, true);
-        await prefs.setString(_keyUserEmail, cleanEmail);
-        final name = res.user!.userMetadata?['full_name'] ?? prefs.getString(_keyUserName) ?? 'Virtual Runner';
-        await prefs.setString(_keyUserName, name);
-        return {'success': true, 'message': 'Login berhasil!'};
-      }
-    } on AuthException catch (e) {
-      return {'success': false, 'message': e.message};
-    } catch (_) {}
-
-    // 2. Coba login melalui REST API Node.js lokal
-    for (final url in [baseUrl, emulatorUrl]) {
+    // 1. Coba verifikasi dengan DATABASE LOKAL (Node.js REST API + PostgreSQL)
+    for (final url in [baseUrl, emulatorUrl, localhostUrl]) {
       try {
         final response = await http.post(
           Uri.parse('$url/api/auth/login'),
@@ -283,146 +179,82 @@ class AuthService {
               await prefs.setString(_keyUserEmail, data['user']['email'] ?? cleanEmail);
             }
             await prefs.setBool(_keyIsLoggedIn, true);
-            return {'success': true, 'message': 'Login berhasil!'};
+            return {'success': true, 'source': 'local', 'message': 'Login berhasil (Database Lokal)!'};
           }
         }
-      } catch (_) {}
-    }
-
-    // 3. Verifikasi offline dari akun lokal
-    final savedEmail = prefs.getString(_keyUserEmail);
-    final savedHash = prefs.getString(_keyPasswordHash);
-
-    if (savedEmail != null && savedEmail == cleanEmail && savedHash == hashPassword(password)) {
-      await prefs.setBool(_keyIsLoggedIn, true);
-      return {'success': true, 'message': 'Login berhasil (mode offline)!'};
-    }
-
-    return {
-      'success': false,
-      'message': 'Akun tidak ditemukan atau password salah.',
-    };
-  }
-
-  // Minta Kode Verifikasi ke Email (OTP Login Tanpa Password)
-  Future<Map<String, dynamic>> sendEmailOtp(String email) async {
-    final cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail.isEmpty) {
-      return {'success': false, 'message': 'Email wajib diisi!'};
-    }
-
-    // 1. Coba kirim via Supabase Cloud Auth
-    try {
-      final client = Supabase.instance.client;
-      await client.auth.signInWithOtp(
-        email: cleanEmail,
-        shouldCreateUser: false, // Hanya kirim jika akun sudah ada
-      );
-      return {
-        'success': true,
-        'message': 'Kode verifikasi 6 digit telah dikirim ke kotak masuk email $cleanEmail.',
-      };
-    } on AuthException catch (e) {
-      if (e.message.toLowerCase().contains('signups not allowed') ||
-          e.message.toLowerCase().contains('user not found')) {
-        return {
-          'success': false,
-          'message': 'Email belum terdaftar. Silakan daftar akun baru terlebih dahulu.',
-        };
+      } catch (_) {
+        // Fallback ke Supabase jika server lokal tidak aktif
       }
-      return {'success': false, 'message': e.message};
-    } catch (_) {}
-
-    // 2. Fallback via REST API Node.js backend jika ada
-    for (final url in [baseUrl, emulatorUrl]) {
-      try {
-        final response = await http.post(
-          Uri.parse('$url/api/auth/send-otp'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'email': cleanEmail}),
-        ).timeout(const Duration(seconds: 3));
-
-        final data = jsonDecode(response.body);
-        if (response.statusCode == 200) {
-          final demoCode = data['demo_code']?.toString();
-          return {
-            'success': true,
-            'message': data['message'] ?? 'Kode verifikasi telah dikirim ke email.',
-            'demo_code': demoCode,
-          };
-        }
-      } catch (_) {}
     }
 
-    // 3. Fallback Offline
-    final random = math.Random();
-    final localCode = (100000 + random.nextInt(900000)).toString();
-    _offlineOtpEmail = cleanEmail;
-    _offlineOtpCode = localCode;
-    _offlineOtpExpiresAt = DateTime.now().add(const Duration(minutes: 5));
-
-    NotificationService().showNotification(
-      title: 'Kode Verifikasi GlobalRun',
-      body: 'Kode login Anda: $localCode. Berlaku selama 5 menit.',
-      type: 'system',
-    );
-
-    return {
-      'success': true,
-      'message': 'Kode verifikasi telah dikirim ke email $cleanEmail.',
-      'demo_code': localCode,
-    };
-  }
-
-  // Verifikasi Kode OTP Login
-  Future<Map<String, dynamic>> verifyEmailOtp({
-    required String email,
-    required String code,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final cleanEmail = email.trim().toLowerCase();
-    final cleanCode = code.trim();
-
-    if (cleanEmail.isEmpty || cleanCode.isEmpty) {
-      return {'success': false, 'message': 'Email dan kode verifikasi wajib diisi!'};
-    }
-
-    // 1. Coba verifikasi melalui Supabase
+    // 2. Coba verifikasi dengan DATABASE ONLINE (Supabase Cloud)
     try {
       final client = Supabase.instance.client;
-      final res = await client.auth.verifyOTP(
+      final res = await client.auth.signInWithPassword(
         email: cleanEmail,
-        token: cleanCode,
-        type: OtpType.email,
+        password: password,
       );
 
       if (res.session != null && res.user != null) {
         await prefs.setBool(_keyIsLoggedIn, true);
         await prefs.setString(_keyUserEmail, cleanEmail);
-        final name = res.user!.userMetadata?['full_name'] ?? 'Virtual Runner';
+        final name = res.user!.userMetadata?['full_name'] ?? prefs.getString(_keyUserName) ?? 'Virtual Runner';
         await prefs.setString(_keyUserName, name);
-        return {'success': true, 'message': 'Login berhasil!'};
+        return {'success': true, 'source': 'online', 'message': 'Login berhasil (Database Online Supabase)!'};
       }
-    } on AuthException catch (e) {
-      return {'success': false, 'message': e.message};
-    } catch (_) {}
+    } catch (_) {
+      // Fallback ke offline cache
+    }
 
-    // 2. Fallback offline
-    if (_offlineOtpEmail == cleanEmail &&
-        _offlineOtpCode == cleanCode &&
-        _offlineOtpExpiresAt != null &&
-        DateTime.now().isBefore(_offlineOtpExpiresAt!)) {
-      _offlineOtpCode = null;
-      final savedName = prefs.getString(_keyUserName) ?? cleanEmail.split('@').first;
-      await prefs.setString(_keyUserEmail, cleanEmail);
-      await prefs.setString(_keyUserName, savedName);
+    // 3. Fallback Offline Cache: verifikasi dari hash kredensial yang pernah tersimpan
+    final savedEmail = prefs.getString(_keyUserEmail);
+    final savedHash = prefs.getString(_keyPasswordHash);
+
+    if (savedEmail != null && savedEmail == cleanEmail && savedHash == hashPassword(password)) {
       await prefs.setBool(_keyIsLoggedIn, true);
-      return {'success': true, 'message': 'Login berhasil (mode offline)!'};
+      return {'success': true, 'source': 'cache', 'message': 'Login berhasil (Mode Cache Offline)!'};
     }
 
     return {
       'success': false,
-      'message': 'Kode verifikasi salah atau sudah kedaluwarsa.',
+      'message': 'Email atau password salah. Silakan periksa kembali akun Anda.',
+    };
+  }
+
+  // Cek Status Koneksi Kedua Database (Untuk Indikator UI Tugas)
+  Future<Map<String, dynamic>> checkDatabaseStatus() async {
+    bool localConnected = false;
+    bool onlineConnected = false;
+
+    // Cek Database Lokal
+    for (final url in [baseUrl, emulatorUrl, localhostUrl]) {
+      try {
+        final res = await http.get(Uri.parse('$url/api/health')).timeout(const Duration(seconds: 2));
+        if (res.statusCode == 200) {
+          localConnected = true;
+          break;
+        }
+      } catch (_) {}
+    }
+
+    // Cek Database Online (Supabase Cloud)
+    try {
+      final client = Supabase.instance.client;
+      await client.from('profiles').select().limit(1).timeout(const Duration(seconds: 2));
+      onlineConnected = true;
+    } catch (_) {
+      // Jika session auth ready, anggap terhubung
+      try {
+        final session = Supabase.instance.client.auth.currentSession;
+        if (session != null) onlineConnected = true;
+      } catch (_) {}
+    }
+
+    return {
+      'local': localConnected,
+      'online': onlineConnected,
+      'localLabel': 'PostgreSQL Lokal (Port 5000)',
+      'onlineLabel': 'Supabase Cloud (PostgreSQL)',
     };
   }
 

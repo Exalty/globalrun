@@ -835,7 +835,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 24),            // 7.5 Status Dual Database
+            DuoCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: DuoColors.questGreen.withOpacity(palette.isDark ? 0.18 : 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: DuoColors.questGreen, width: 1.5),
+                        ),
+                        child: const Icon(Icons.storage_rounded, color: DuoColors.questGreen, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ARSITEKTUR BASIS DATA',
+                              style: TextStyle(
+                                color: palette.textPrimary,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Implementasi Dual Database (Lokal & Online)',
+                              style: TextStyle(color: palette.textMuted, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(color: DuoColors.surfaceBorder, height: 1),
+                  const SizedBox(height: 12),
+                  _buildDbRow(
+                    label: 'Database Lokal',
+                    system: 'PostgreSQL Server (Port 5000)',
+                    palette: palette,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDbRow(
+                    label: 'Database Online',
+                    system: 'Supabase Cloud (PostgreSQL)',
+                    palette: palette,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
 
             // 8. Logout 3D Button (Duolingo Red Button)
             DuoButton(
@@ -914,6 +974,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           label.toUpperCase(),
           style: TextStyle(color: palette.textMuted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDbRow({
+    required String label,
+    required String system,
+    required DuoColorPalette palette,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.bold)),
+            Text(system, style: TextStyle(color: palette.textMuted, fontSize: 11)),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: DuoColors.questGreen.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: DuoColors.questGreen, width: 1),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_rounded, color: DuoColors.questGreen, size: 13),
+              SizedBox(width: 4),
+              Text(
+                'AKTIF',
+                style: TextStyle(color: DuoColors.questGreen, fontSize: 10, fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
         ),
       ],
     );

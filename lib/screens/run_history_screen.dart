@@ -46,7 +46,7 @@ class _RunHistoryScreenState extends State<RunHistoryScreen> {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: runs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, index) => const SizedBox(height: 10),
             itemBuilder: (context, i) {
               final r = runs[i];
               return Dismissible(
