@@ -708,206 +708,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icon(Icons.public_rounded, color: palette.textPrimary, size: 16),
                       label: selectedTimezone.code,
                       borderColor: palette.surfaceBorder,
+                      onTap: () => _showQuickTimezoneModal(context, timezoneService, palette),
                       backgroundColor: palette.surface,
                       textColor: palette.textPrimary,
                     ),
                   ],
                 ),
               ),
-
-              // Quick Global Converters Card (Timezone & Currency)
-              DuoCard(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.public_rounded, color: palette.primaryBlue, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Sinkronisasi Global Lintas Negara',
-                            style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                        ),
-                        // Tombol refresh kurs dari API
-                        if (currencyService.isLoading || timezoneService.isLoading)
-                          SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: palette.primaryBlue,
-                            ),
-                          )
-                        else
-                          InkWell(
-                            onTap: () async {
-                              await currencyService.fetchRatesFromApi();
-                              await timezoneService.fetchTimezonesFromApi();
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Row(
-                                      children: [
-                                        Icon(
-                                          currencyService.hasApiData ? Icons.check_circle : Icons.warning_rounded,
-                                          color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            currencyService.hasApiData
-                                                ? 'Kurs & zona waktu berhasil diperbarui dari API!'
-                                                : 'Gagal memperbarui. Menggunakan data fallback.',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    backgroundColor: const Color(0xFF1E293B),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                            borderRadius: BorderRadius.circular(6),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Icon(
-                                Icons.refresh_rounded,
-                                size: 18,
-                                color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-
-                    // API status badge
-                    if (currencyService.hasApiData && currencyService.lastUpdated != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Colors.greenAccent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Data API real-time • ${currencyService.getRateLabel(selectedCurrency)}',
-                              style: const TextStyle(color: Colors.greenAccent, fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      )
-                    else if (currencyService.lastError != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: Colors.orangeAccent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'Mode offline (fallback rates)',
-                              style: TextStyle(color: Colors.orangeAccent, fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        // Timezone Selector
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Zona Waktu:', style: TextStyle(color: palette.textMuted, fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                decoration: BoxDecoration(
-                                  color: palette.background,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: palette.surfaceBorder, width: 1.5),
-                                ),
-                                child: DropdownButton<TimezoneModel>(
-                                  isExpanded: true,
-                                  value: selectedTimezone,
-                                  dropdownColor: palette.surface,
-                                  underline: const SizedBox(),
-                                  style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
-                                  items: timezoneService.supportedZones.map((z) {
-                                    return DropdownMenuItem(
-                                      value: z,
-                                      child: Text('${z.code} (${z.offsetHours >= 0 ? "+" : ""}${z.offsetHours})', overflow: TextOverflow.ellipsis),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    if (val != null) timezoneService.setSelectedTimezone(val);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Currency Selector
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Mata Uang:', style: TextStyle(color: palette.textMuted, fontSize: 12)),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                decoration: BoxDecoration(
-                                  color: palette.background,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: palette.surfaceBorder, width: 1.5),
-                                ),
-                                child: DropdownButton<String>(
-                                  isExpanded: true,
-                                  value: selectedCurrency,
-                                  dropdownColor: palette.surface,
-                                  underline: const SizedBox(),
-                                  style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
-                                  items: currencyService.currencies.keys.map((c) {
-                                    return DropdownMenuItem(
-                                      value: c,
-                                      child: Text('$c (${currencyService.currencies[c]!.symbol})'),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    if (val != null) currencyService.setSelectedCurrency(val);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Fasilitas Pencarian Lomba (Search Bar - Duo 3D)
               DuoCard(
@@ -1526,4 +1334,77 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  void _showQuickTimezoneModal(
+    BuildContext context,
+    TimezoneService timezoneService,
+    DuoColorPalette palette,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'PILIH ZONA WAKTU',
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                      color: palette.textMuted,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: timezoneService.supportedZones.map((z) {
+                    final isSelected = timezoneService.selectedTimezone.code == z.code;
+                    return ChoiceChip(
+                      label: Text(' ()'),
+                      selected: isSelected,
+                      selectedColor: palette.primaryBlue,
+                      backgroundColor: palette.background,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : palette.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                      onSelected: (selected) {
+                        if (selected) {
+                          timezoneService.setSelectedTimezone(z);
+                          Navigator.pop(ctx);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
+
