@@ -7,6 +7,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+
 class AuthService {
   static const String _keyIsLoggedIn = 'is_logged_in';
   static const String _keyUserEmail = 'user_email';
@@ -334,6 +335,27 @@ class AuthService {
       'photo': prefs.getString(_keyUserPhoto) ?? '',
       'isBiometricEnabled': prefs.getBool(_keyBiometricEnabled) ?? false,
     };
+  }
+    double _round4(double v) => (v * 10000).round() / 10000;
+
+  Future<double> getWalletUsd() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_keyUserWallet) ?? 250.0;
+  }
+
+  Future<void> addToWallet(double usd) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getDouble(_keyUserWallet) ?? 250.0;
+    await prefs.setDouble(_keyUserWallet, _round4(current + usd));
+  }
+
+  /// false jika saldo tidak cukup (saldo tidak berubah).
+  Future<bool> deductFromWallet(double usd) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getDouble(_keyUserWallet) ?? 250.0;
+    if (usd <= 0 || current + 0.0001 < usd) return false;
+    await prefs.setDouble(_keyUserWallet, _round4(current - usd));
+    return true;
   }
 
   // Logout Saja

@@ -6,6 +6,7 @@ import '../services/timezone_service.dart';
 import '../services/theme_service.dart';
 import '../theme/duo_theme.dart';
 import 'notification_screen.dart';
+import 'topup_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -41,6 +42,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  /// Membuka layar Top Up Saldo, lalu memuat ulang saldo jika ada perubahan.
+  Future<void> _openTopUp() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const TopUpScreen()),
+    );
+    if (changed == true) _loadProfile();
   }
 
   /// Mengarahkan dan scroll halus ke kartu pengaturan sidik jari di halaman profil
@@ -143,7 +153,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = (_userProfile?['email'] != null && _userProfile!['email'].toString().isNotEmpty)
         ? _userProfile!['email']
         : 'email@kompetisi.com';
-    final walletUsd = (_userProfile?['wallet'] ?? 250.0) as double;
+    // Cast aman: saldo bisa tersimpan sebagai int atau double
+    final walletUsd = ((_userProfile?['wallet'] ?? 250.0) as num).toDouble();
     final walletFormatted = currencyService.formatCurrency(walletUsd, selectedCurrency);
 
     return Scaffold(
@@ -244,7 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         borderColor: _isBiometricActive ? DuoColors.questGreenShadow : palette.surfaceBorder,
                         backgroundColor: palette.background,
                         textColor: _isBiometricActive ? DuoColors.questGreen : palette.textMuted,
-                        onTap: _scrollToBiometricSetting, // <--- LANGSUNG SCROLL KE PENGATURAN SIDIK JARI
+                        onTap: _scrollToBiometricSetting,
                       ),
                     ],
                   ),
@@ -327,14 +338,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shadowColor: DuoColors.streakGoldShadow,
                     textColor: Colors.black,
                     icon: const Icon(Icons.add_card_rounded, color: Colors.black, size: 20),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Top-up saldo berhasil disimulasikan!'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                    onPressed: _openTopUp,
                   ),
                 ],
               ),
@@ -835,7 +839,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),            // 7.5 Status Dual Database
+            const SizedBox(height: 18),
+
+            // 7.5 Status Dual Database
             DuoCard(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -895,7 +901,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             const SizedBox(height: 20),
-
 
             // 8. Logout 3D Button (Duolingo Red Button)
             DuoButton(
