@@ -4,7 +4,6 @@ import 'package:latlong2/latlong.dart';
 
 import '../models/blockchain_record.dart';
 import '../models/run_record.dart';
-import '../theme/duo_theme.dart';
 import '../services/blockchain_service.dart';
 import 'blockchain_certificate_screen.dart';
 
@@ -31,24 +30,19 @@ class RunSummaryScreen extends StatelessWidget {
         ? 1
         : splits.map((s) => s.seconds).reduce((a, b) => a > b ? a : b);
 
-    final palette = DuoColors.of(context);
+    // Medali: pakai blok yang dikirim (lari baru selesai), atau cari di ledger
+    // berdasarkan index yang tersimpan di riwayat (lari lama).
+    final Block? medal = block ??
+        ((record.blockIndex != null && blockchainService != null)
+            ? blockchainService!.blockAt(record.blockIndex!)
+            : null);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        iconTheme: IconThemeData(color: palette.textPrimary),
-        title: Text(
-          record.eventTitle.toUpperCase(),
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
-            fontSize: 18,
-            color: palette.textPrimary,
-          ),
-        ),
-        backgroundColor: palette.surface,
-        elevation: 0,
-        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
+        backgroundColor: const Color(0xFF1E293B),
+        title: Text(record.eventTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
       ),
       body: Column(
         children: [
@@ -117,14 +111,14 @@ class RunSummaryScreen extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 16),
-                if (block != null && blockchainService != null)
+                if (medal != null && blockchainService != null)
                   ElevatedButton.icon(
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => BlockchainCertificateScreen(
                           blockchainService: blockchainService!,
-                          highlightBlock: block!,
+                          highlightBlock: medal,
                         ),
                       ),
                     ),

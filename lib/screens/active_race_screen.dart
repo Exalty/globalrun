@@ -14,6 +14,7 @@ import '../services/blockchain_service.dart';
 import '../services/ai_coach_service.dart';
 import '../services/notification_service.dart';
 import '../services/run_history_service.dart';
+import '../services/auth_service.dart';
 import 'ai_coach_screen.dart';
 import 'run_summary_screen.dart';
 
@@ -193,10 +194,14 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     if (targetReached && (!isSim || _mintSimulatedRuns)) {
       try {
         final avgSpeed = durationSec > 0 ? distanceKm / (durationSec / 3600.0) : 0.0;
+        // Nama peserta diambil dari akun yang sedang login
+        final profile = await AuthService().getUserProfile();
+        final rawName = (profile['name'] as String?)?.trim() ?? '';
+        final participant = rawName.isEmpty ? 'Garuda Runner' : rawName;
         minted = await widget.blockchainService.mintMedalBlock(
           raceId: widget.event.id,
           raceTitle: widget.event.title,
-          participantName: 'Garuda Runner (User)',
+          participantName: participant,
           distanceKm: distanceKm,
           durationSeconds: durationSec,
           stepsCount: steps,
@@ -350,7 +355,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                     // Hanya marker yang rebuild saat kompas berubah
                     child: ValueListenableBuilder<double>(
                       valueListenable: location.heading,
-                      builder: (_, deg, child) => Transform.rotate(
+                      builder: (_, deg, __) => Transform.rotate(
                         angle: deg * pi / 180.0,
                         child: _buildArrow(),
                       ),

@@ -19,87 +19,146 @@ class BlockchainCertificateScreen extends StatefulWidget {
 }
 
 class _BlockchainCertificateScreenState extends State<BlockchainCertificateScreen> {
-  late bool isLedgerValid;
+  bool _loaded = false;
+  bool isLedgerValid = true;
+  int? _invalidIndex;
 
   @override
   void initState() {
     super.initState();
-    isLedgerValid = widget.blockchainService.verifyLedgerIntegrity();
+    // Tunggu ledger selesai dimuat sebelum membaca rantai
+    widget.blockchainService.ready.then((_) {
+      if (mounted) {
+        setState(() {
+          _loaded = true;
+          _revalidate();
+        });
+      }
+    });
+  }
+
+  void _revalidate() {
+    _invalidIndex = widget.blockchainService.findInvalidBlockIndex();
+    isLedgerValid = _invalidIndex == null;
+  }
+
+  Color _tierColor(String tier) {
+    switch (tier) {
+      case 'GOLD':
+        return Colors.amber;
+      case 'SILVER':
+        return const Color(0xFFB0BEC5);
+      case 'BRONZE':
+        return const Color(0xFFD7845A);
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   void _showBlockDetail(Block block) {
+    final tierColor = _tierColor(block.tier);
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF1E293B),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.verified_rounded, color: Colors.cyanAccent, size: 28),
-                  const SizedBox(width: 10),
-                  Text('Blok #${block.index} Verified NFT Certificate',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded, color: Colors.cyanAccent, size: 28),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        block.isGenesis
+                            ? 'Genesis Block #0'
+                            : 'Blok #${block.index} Verified NFT Certificate',
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (!block.isGenesis) ...[
+                  _buildInfoRow('Token ID', block.tokenId),
+                  _buildInfoRow('Tier Medali', block.tier, valueColor: tierColor),
                 ],
-              ),
-              const SizedBox(height: 16),
-              _buildInfoRow('Participant', block.participantName),
-              _buildInfoRow('Event', block.raceTitle),
-              _buildInfoRow('Distance', '${block.distanceKm.toStringAsFixed(2)} km'),
-              _buildInfoRow('Steps Count', '${block.stepsCount} langkah (Pedometer verified)'),
-              _buildInfoRow('Duration', '${(block.durationSeconds / 60).toStringAsFixed(1)} menit'),
-              _buildInfoRow('Avg Speed', '${block.avgSpeedKmh.toStringAsFixed(1)} km/h'),
-              const Divider(color: Colors.white24, height: 20),
-              const Text('Cryptographic SHA-256 Hash:', style: TextStyle(color: Colors.white54, fontSize: 12)),
-              SelectableText(
-                block.hash,
-                style: const TextStyle(color: Colors.cyanAccent, fontFamily: 'monospace', fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              const Text('Previous Block Hash:', style: TextStyle(color: Colors.white54, fontSize: 12)),
-              SelectableText(
-                block.previousHash,
-                style: const TextStyle(color: Colors.white70, fontFamily: 'monospace', fontSize: 12),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: block.hash));
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Hash medali berhasil disalin ke clipboard!')),
-                    );
-                  },
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  label: const Text('Salin Hash Sertifikat'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.cyanAccent,
-                    foregroundColor: Colors.black,
+                _buildInfoRow('Participant', block.participantName),
+                _buildInfoRow('Event', block.raceTitle),
+                _buildInfoRow('Distance', '${block.distanceKm.toStringAsFixed(2)} km'),
+                _buildInfoRow('Steps Count', '${block.stepsCount} langkah (Pedometer verified)'),
+                _buildInfoRow('Duration', '${(block.durationSeconds / 60).toStringAsFixed(1)} menit'),
+                _buildInfoRow('Avg Speed', '${block.avgSpeedKmh.toStringAsFixed(1)} km/h'),
+                _buildInfoRow('Minted At', block.timestamp.replaceFirst('T', ' ').split('.').first),
+                const Divider(color: Colors.white24, height: 20),
+                const Text('Cryptographic SHA-256 Hash:',
+                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+                SelectableText(
+                  block.hash,
+                  style: const TextStyle(
+                      color: Colors.cyanAccent, fontFamily: 'monospace', fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                const Text('Previous Block Hash:',
+                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+                SelectableText(
+                  block.previousHash,
+                  style: const TextStyle(
+                      color: Colors.white70, fontFamily: 'monospace', fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: block.hash));
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Hash medali berhasil disalin ke clipboard!')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 18),
+                    label: const Text('Salin Hash Sertifikat'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyanAccent,
+                      foregroundColor: Colors.black,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: const TextStyle(color: Colors.white60, fontSize: 13)),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  color: valueColor ?? Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13),
+            ),
+          ),
         ],
       ),
     );
@@ -107,9 +166,27 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
 
   @override
   Widget build(BuildContext context) {
-    final chain = widget.blockchainService.chain;
-
     final palette = DuoColors.of(context);
+
+    if (!_loaded) {
+      return Scaffold(
+        backgroundColor: palette.background,
+        appBar: AppBar(
+          iconTheme: IconThemeData(color: palette.textPrimary),
+          backgroundColor: palette.surface,
+          title: Text('SERTIFIKAT & MEDALI',
+              style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  fontSize: 18,
+                  color: palette.textPrimary)),
+        ),
+        body: const Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
+      );
+    }
+
+    final chain = widget.blockchainService.chain;
+    final medalCount = widget.blockchainService.medalCount;
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -130,11 +207,7 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              setState(() {
-                isLedgerValid = widget.blockchainService.verifyLedgerIntegrity();
-              });
-            },
+            onPressed: () => setState(_revalidate),
             tooltip: 'Validasi Ulang Ledger',
           )
         ],
@@ -176,13 +249,14 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                       children: [
                         Text(
                           isLedgerValid ? 'Proof-of-Athletics Valid' : 'Ledger Tampered!',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           isLedgerValid
                               ? 'Seluruh sertifikat & medali aman terenkripsi SHA-256 tanpa kecurangan data GPS/Sensor.'
-                              : 'Integritas rantai hash rusak atau mengalami modifikasi tidak sah.',
+                              : 'Integritas rantai hash rusak mulai dari Blok #$_invalidIndex. Data telah dimodifikasi secara tidak sah.',
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                       ],
@@ -196,17 +270,42 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Koleksi Medali Digital (NFT)',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '${chain.length} Blok',
-                  style: const TextStyle(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                  '$medalCount Medali • ${chain.length} Blok',
+                  style: const TextStyle(
+                      color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
               ],
             ),
             const SizedBox(height: 12),
+
+            if (medalCount == 0)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.military_tech_outlined, color: Colors.white38, size: 40),
+                    SizedBox(height: 8),
+                    Text(
+                      'Belum ada medali. Selesaikan sebuah race untuk mencetak medali NFT pertamamu.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white60, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
 
             // Certificates / Blocks List
             ListView.separated(
@@ -222,7 +321,11 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
               ),
               itemBuilder: (context, index) {
                 final block = chain[chain.length - 1 - index]; // latest first
-                final isGenesis = block.index == 0;
+                final isGenesis = block.isGenesis;
+                final isHighlighted = widget.highlightBlock != null &&
+                    widget.highlightBlock!.index == block.index;
+                final tierColor = _tierColor(block.tier);
+                final isBroken = _invalidIndex != null && block.index >= _invalidIndex!;
 
                 return GestureDetector(
                   onTap: () => _showBlockDetail(block),
@@ -232,9 +335,24 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                       color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isGenesis ? Colors.white24 : Colors.cyanAccent.withOpacity(0.5),
-                        width: 1.5,
+                        color: isBroken
+                            ? Colors.redAccent
+                            : isHighlighted
+                                ? Colors.amber
+                                : (isGenesis
+                                    ? Colors.white24
+                                    : Colors.cyanAccent.withOpacity(0.5)),
+                        width: isHighlighted ? 2.5 : 1.5,
                       ),
+                      boxShadow: isHighlighted
+                          ? [
+                              BoxShadow(
+                                color: Colors.amber.withOpacity(0.35),
+                                blurRadius: 16,
+                                spreadRadius: 1,
+                              )
+                            ]
+                          : null,
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,12 +364,12 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                             gradient: LinearGradient(
                               colors: isGenesis
                                   ? [Colors.blueGrey, Colors.grey]
-                                  : [Colors.amber.shade600, Colors.deepOrangeAccent],
+                                  : [tierColor, tierColor.withOpacity(0.55)],
                             ),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: (isGenesis ? Colors.blueGrey : Colors.amber).withOpacity(0.4),
+                                color: tierColor.withOpacity(0.4),
                                 blurRadius: 10,
                               ),
                             ],
@@ -270,14 +388,42 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    isGenesis ? 'Genesis Block #0' : 'Digital Medal #${block.index}',
-                                    style: TextStyle(
-                                      color: isGenesis ? Colors.white70 : Colors.cyanAccent,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                  Flexible(
+                                    child: Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            isGenesis
+                                                ? 'Genesis Block #0'
+                                                : '${block.tokenId} • ${block.tier}',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: isGenesis ? Colors.white70 : tierColor,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                        if (isHighlighted) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber,
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: const Text('BARU',
+                                                style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w900)),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     block.timestamp.split('T').first,
                                     style: const TextStyle(color: Colors.white38, fontSize: 11),
@@ -287,7 +433,10 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                               const SizedBox(height: 4),
                               Text(
                                 block.raceTitle,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -296,14 +445,18 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                               ),
                               const SizedBox(height: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.black26,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   'Hash: ${block.hash.substring(0, 16)}...',
-                                  style: const TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'monospace'),
+                                  style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 11,
+                                      fontFamily: 'monospace'),
                                 ),
                               ),
                             ],
