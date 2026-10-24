@@ -35,7 +35,31 @@ class RunHistoryService {
     }
     return out;
   }
+  /// Peta eventId -> lari terbaru yang SELESAI (target tercapai).
+  /// loadAll() sudah urut terbaru dulu, jadi putIfAbsent mengambil yang terbaru.
+  Future<Map<String, RunRecord>> completedByEvent() async {
+    final all = await loadAll();
+    final map = <String, RunRecord>{};
+    for (final r in all) {
+      if (r.completed) map.putIfAbsent(r.eventId, () => r);
+    }
+    return map;
+  }
 
+    /// true = 1 race hanya bisa diikuti sekali (apa pun hasilnya).
+  /// Set false saat testing.
+  static const bool oneAttemptPerRace = true;
+
+  /// Peta eventId -> lari terbaru untuk event itu (selesai atau tidak).
+  Future<Map<String, RunRecord>> attemptsByEvent() async {
+    final all = await loadAll(); // urut terbaru dulu
+    final map = <String, RunRecord>{};
+    for (final r in all) {
+      map.putIfAbsent(r.eventId, () => r);
+    }
+    return map;
+  }
+  
   Future<void> delete(String id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key(id));

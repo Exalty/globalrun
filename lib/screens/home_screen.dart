@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/race_event.dart';
+import '../models/run_record.dart';
 import '../services/timezone_service.dart';
 import '../services/currency_service.dart';
 import '../services/blockchain_service.dart';
@@ -13,9 +14,11 @@ import '../services/ai_coach_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/event_service.dart';
+import '../services/run_history_service.dart';
 import 'active_race_screen.dart';
 import 'blockchain_certificate_screen.dart';
 import 'notification_screen.dart';
+import 'run_summary_screen.dart';
 import '../theme/duo_theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -48,6 +51,21 @@ class _HomeScreenState extends State<HomeScreen> {
   double _userWalletUsd = 250.0;
   bool _isBalanceHidden = false;
   static const String _prefHideBalance = 'pref_hide_home_balance';
+
+  // Lari yang sudah pernah diikuti per event (eventId -> RunRecord terbaru),
+  // baik yang selesai maupun yang dihentikan di tengah.
+  Map<String, RunRecord> _completedRuns = {};
+
+  // Diatur terpusat di RunHistoryService.oneAttemptPerRace
+  // (true = 1 race hanya sekali, false = boleh mengulang saat testing)
+  static const bool _oneAttemptPerRace = RunHistoryService.oneAttemptPerRace;
+
+  Future<void> _loadCompletedRuns() async {
+    try {
+      final map = await RunHistoryService().attemptsByEvent();
+      if (mounted) setState(() => _completedRuns = map);
+    } catch (_) {}
+  }
 
   Future<void> _loadWalletAndPrefs() async {
     try {
@@ -88,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadWalletAndPrefs();
+    _loadCompletedRuns();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final eventService = context.read<EventService>();
@@ -112,6 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final timezoneService = context.read<TimezoneService>();
     final selectedTimezone = timezoneService.selectedTimezone;
     final selectedCurrency = currencyService.selectedCurrency;
+
+    // Jika sudah pernah menyelesaikan race ini, simpan hasilnya di sini
+    final RunRecord? doneRun =
+        _oneAttemptPerRace ? _completedRuns[event.id.toString()] : null;
 
     showModalBottomSheet(
       context: context,
@@ -441,33 +464,89 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ActiveRaceScreen(
-                            event: event,
-                            blockchainService: widget.blockchainService,
-                            aiCoachService: widget.aiCoachService,
+
+                // Sudah selesai -> tampilkan hasil. Belum -> tombol mulai race.
+                if (doneRun != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: DuoColors.questGreen.withOpacity(0.14),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: DuoColors.questGreen, width: 1.5),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: DuoColors.questGreen, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Kamu sudah mengikuti race ini. Race hanya bisa diikuti sekali.',
+                            style: TextStyle(
+                              color: DuoColors.questGreen,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                    label: const Text('Mulai Race Virtual Sekarang'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: palette.primaryBlue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ],
                     ),
                   ),
-                ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RunSummaryScreen(
+                              record: doneRun,
+                              blockchainService: widget.blockchainService,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.emoji_events_rounded, size: 22),
+                      label: const Text('Lihat Hasil Lari Saya'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: DuoColors.questGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ] else
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ActiveRaceScreen(
+                              event: event,
+                              blockchainService: widget.blockchainService,
+                              aiCoachService: widget.aiCoachService,
+                            ),
+                          ),
+                        ).then((_) => _loadCompletedRuns());
+                      },
+                      icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                      label: const Text('Mulai Race Virtual Sekarang'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: palette.primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -574,592 +653,626 @@ class _HomeScreenState extends State<HomeScreen> {
           await Future.wait([
             eventService.fetchEvents(forceRefresh: true),
             _loadWalletAndPrefs(),
+            _loadCompletedRuns(),
           ]);
         },
         color: palette.primaryBlue,
         backgroundColor: palette.surface,
         child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Duolingo Top Gamification Chips Bar (Clean Material Icons)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Row(
-                children: [
-                  DuoChip(
-                    icon: const Icon(Icons.local_fire_department_rounded, color: DuoColors.streakGold, size: 16),
-                    label: '5 HARI',
-                    borderColor: DuoColors.streakGoldShadow,
-                    backgroundColor: palette.surface,
-                    textColor: DuoColors.streakGold,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Center(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Builder(
-                          builder: (context) {
-                            final rate = currencyService.currencies[selectedCurrency] ?? currencyService.currencies['USD']!;
-                            final balanceFormatted = currencyService.formatCurrency(_userWalletUsd, selectedCurrency);
-                            final balanceDisplay = _isBalanceHidden ? '${rate.symbol} ••••••' : balanceFormatted;
-                            return DuoChip(
-                              icon: const Icon(Icons.account_balance_wallet_rounded, color: DuoColors.primaryBlue, size: 16),
-                              label: balanceDisplay,
-                              trailing: Icon(
-                                _isBalanceHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                                color: DuoColors.primaryBlue.withOpacity(0.75),
-                                size: 14,
-                              ),
-                              borderColor: DuoColors.primaryBlueShadow,
-                              backgroundColor: palette.surface,
-                              textColor: DuoColors.primaryBlue,
-                              onTap: _toggleBalanceVisibility,
-                            );
-                          },
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Duolingo Top Gamification Chips Bar (Clean Material Icons)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    DuoChip(
+                      icon: const Icon(Icons.local_fire_department_rounded, color: DuoColors.streakGold, size: 16),
+                      label: '5 HARI',
+                      borderColor: DuoColors.streakGoldShadow,
+                      backgroundColor: palette.surface,
+                      textColor: DuoColors.streakGold,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Builder(
+                            builder: (context) {
+                              final rate = currencyService.currencies[selectedCurrency] ?? currencyService.currencies['USD']!;
+                              final balanceFormatted = currencyService.formatCurrency(_userWalletUsd, selectedCurrency);
+                              final balanceDisplay = _isBalanceHidden ? '${rate.symbol} ••••••' : balanceFormatted;
+                              return DuoChip(
+                                icon: const Icon(Icons.account_balance_wallet_rounded, color: DuoColors.primaryBlue, size: 16),
+                                label: balanceDisplay,
+                                trailing: Icon(
+                                  _isBalanceHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                  color: DuoColors.primaryBlue.withOpacity(0.75),
+                                  size: 14,
+                                ),
+                                borderColor: DuoColors.primaryBlueShadow,
+                                backgroundColor: palette.surface,
+                                textColor: DuoColors.primaryBlue,
+                                onTap: _toggleBalanceVisibility,
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  DuoChip(
-                    icon: Icon(Icons.public_rounded, color: palette.textPrimary, size: 16),
-                    label: selectedTimezone.code,
-                    borderColor: palette.surfaceBorder,
-                    backgroundColor: palette.surface,
-                    textColor: palette.textPrimary,
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    DuoChip(
+                      icon: Icon(Icons.public_rounded, color: palette.textPrimary, size: 16),
+                      label: selectedTimezone.code,
+                      borderColor: palette.surfaceBorder,
+                      backgroundColor: palette.surface,
+                      textColor: palette.textPrimary,
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // Quick Global Converters Card (Timezone & Currency)
-            DuoCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.public_rounded, color: palette.primaryBlue, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Sinkronisasi Global Lintas Negara',
-                          style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                      ),
-                      // Tombol refresh kurs dari API
-                      if (currencyService.isLoading || timezoneService.isLoading)
-                        SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: palette.primaryBlue,
+              // Quick Global Converters Card (Timezone & Currency)
+              DuoCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.public_rounded, color: palette.primaryBlue, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Sinkronisasi Global Lintas Negara',
+                            style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                           ),
-                        )
-                      else
-                        InkWell(
-                          onTap: () async {
-                            await currencyService.fetchRatesFromApi();
-                            await timezoneService.fetchTimezonesFromApi();
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      Icon(
-                                        currencyService.hasApiData ? Icons.check_circle : Icons.warning_rounded,
-                                        color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          currencyService.hasApiData
-                                              ? 'Kurs & zona waktu berhasil diperbarui dari API!'
-                                              : 'Gagal memperbarui. Menggunakan data fallback.',
+                        ),
+                        // Tombol refresh kurs dari API
+                        if (currencyService.isLoading || timezoneService.isLoading)
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: palette.primaryBlue,
+                            ),
+                          )
+                        else
+                          InkWell(
+                            onTap: () async {
+                              await currencyService.fetchRatesFromApi();
+                              await timezoneService.fetchTimezonesFromApi();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        Icon(
+                                          currencyService.hasApiData ? Icons.check_circle : Icons.warning_rounded,
+                                          color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
+                                          size: 18,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            currencyService.hasApiData
+                                                ? 'Kurs & zona waktu berhasil diperbarui dari API!'
+                                                : 'Gagal memperbarui. Menggunakan data fallback.',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    backgroundColor: const Color(0xFF1E293B),
+                                    behavior: SnackBarBehavior.floating,
                                   ),
-                                  backgroundColor: const Color(0xFF1E293B),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            }
-                          },
-                          borderRadius: BorderRadius.circular(6),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.refresh_rounded,
-                              size: 18,
-                              color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                Icons.refresh_rounded,
+                                size: 18,
+                                color: currencyService.hasApiData ? Colors.greenAccent : Colors.orangeAccent,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
+                      ],
+                    ),
 
-                  // API status badge
-                  if (currencyService.hasApiData && currencyService.lastUpdated != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
+                    // API status badge
+                    if (currencyService.hasApiData && currencyService.lastUpdated != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Colors.greenAccent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Data API real-time • ${currencyService.getRateLabel(selectedCurrency)}',
+                              style: const TextStyle(color: Colors.greenAccent, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (currencyService.lastError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Colors.orangeAccent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Mode offline (fallback rates)',
+                              style: TextStyle(color: Colors.orangeAccent, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        // Timezone Selector
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Zona Waktu:', style: TextStyle(color: palette.textMuted, fontSize: 12)),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: palette.background,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: palette.surfaceBorder, width: 1.5),
+                                ),
+                                child: DropdownButton<TimezoneModel>(
+                                  isExpanded: true,
+                                  value: selectedTimezone,
+                                  dropdownColor: palette.surface,
+                                  underline: const SizedBox(),
+                                  style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                                  items: timezoneService.supportedZones.map((z) {
+                                    return DropdownMenuItem(
+                                      value: z,
+                                      child: Text('${z.code} (${z.offsetHours >= 0 ? "+" : ""}${z.offsetHours})', overflow: TextOverflow.ellipsis),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) timezoneService.setSelectedTimezone(val);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Currency Selector
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Mata Uang:', style: TextStyle(color: palette.textMuted, fontSize: 12)),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: palette.background,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: palette.surfaceBorder, width: 1.5),
+                                ),
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: selectedCurrency,
+                                  dropdownColor: palette.surface,
+                                  underline: const SizedBox(),
+                                  style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                                  items: currencyService.currencies.keys.map((c) {
+                                    return DropdownMenuItem(
+                                      value: c,
+                                      child: Text('$c (${currencyService.currencies[c]!.symbol})'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) currencyService.setSelectedCurrency(val);
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Fasilitas Pencarian Lomba (Search Bar - Duo 3D)
+              DuoCard(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: TextField(
+                  controller: _searchController,
+                  style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                      _currentPartition = 0;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Cari lomba (misal: Tokyo, 5K, Fun Run)...',
+                    hintStyle: const TextStyle(color: DuoColors.textMuted, fontSize: 13),
+                    prefixIcon: const Icon(Icons.search_rounded, color: DuoColors.primaryBlue),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear_rounded, color: DuoColors.textMuted, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                                _currentPartition = 0;
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Fasilitas Pemilihan Kategori (Filter Chips)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterChip(
+                      label: 'Semua',
+                      icon: Icons.grid_view_rounded,
+                      categoryKey: 'all',
+                      palette: palette,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'Lari',
+                      icon: Icons.directions_run_rounded,
+                      categoryKey: 'run',
+                      palette: palette,
+                      activeColor: DuoColors.primaryBlue,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: 'Sepeda',
+                      icon: Icons.directions_bike_rounded,
+                      categoryKey: 'cycling',
+                      palette: palette,
+                      activeColor: DuoColors.streakGold,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Jadwal Kompetisi Mendatang',
+                            style: TextStyle(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          if (filteredEvents.length > _eventsPerPage) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: palette.primaryBlue.withOpacity(palette.isDark ? 0.22 : 0.14),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: palette.primaryBlue.withOpacity(0.4), width: 1),
+                              ),
+                              child: Text(
+                                'Partisi ${_currentPartition + 1}/${((filteredEvents.length - 1) ~/ _eventsPerPage) + 1}',
+                                style: TextStyle(
+                                  color: palette.primaryBlue,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
                         children: [
                           Container(
-                            width: 6, height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.greenAccent,
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: eventService.isLiveFromBackend ? DuoColors.questGreen : DuoColors.streakGold,
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Data API real-time • ${currencyService.getRateLabel(selectedCurrency)}',
-                            style: const TextStyle(color: Colors.greenAccent, fontSize: 10),
+                            eventService.isLiveFromBackend
+                                ? 'LIVE DATA (RunSignup & PostgreSQL)'
+                                : (eventService.isLoading ? 'Menghubungkan ke API...' : 'MODE OFFLINE / CACHED'),
+                            style: TextStyle(
+                              color: eventService.isLiveFromBackend ? DuoColors.questGreen : palette.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
-                      ),
-                    )
-                  else if (currencyService.lastError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 6, height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.orangeAccent,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Mode offline (fallback rates)',
-                            style: TextStyle(color: Colors.orangeAccent, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      // Timezone Selector
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Zona Waktu:', style: TextStyle(color: palette.textMuted, fontSize: 12)),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: palette.background,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: palette.surfaceBorder, width: 1.5),
-                              ),
-                              child: DropdownButton<TimezoneModel>(
-                                isExpanded: true,
-                                value: selectedTimezone,
-                                dropdownColor: palette.surface,
-                                underline: const SizedBox(),
-                                style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
-                                items: timezoneService.supportedZones.map((z) {
-                                  return DropdownMenuItem(
-                                    value: z,
-                                    child: Text('${z.code} (${z.offsetHours >= 0 ? "+" : ""}${z.offsetHours})', overflow: TextOverflow.ellipsis),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) timezoneService.setSelectedTimezone(val);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Currency Selector
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Mata Uang:', style: TextStyle(color: palette.textMuted, fontSize: 12)),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: palette.background,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: palette.surfaceBorder, width: 1.5),
-                              ),
-                              child: DropdownButton<String>(
-                                isExpanded: true,
-                                value: selectedCurrency,
-                                dropdownColor: palette.surface,
-                                underline: const SizedBox(),
-                                style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
-                                items: currencyService.currencies.keys.map((c) {
-                                  return DropdownMenuItem(
-                                    value: c,
-                                    child: Text('$c (${currencyService.currencies[c]!.symbol})'),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) currencyService.setSelectedCurrency(val);
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Fasilitas Pencarian Lomba (Search Bar - Duo 3D)
-            DuoCard(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: TextField(
-                controller: _searchController,
-                style: TextStyle(color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
-                onChanged: (val) {
-                  setState(() {
-                    _searchQuery = val;
-                    _currentPartition = 0;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Cari lomba (misal: Tokyo, 5K, Fun Run)...',
-                  hintStyle: const TextStyle(color: DuoColors.textMuted, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search_rounded, color: DuoColors.primaryBlue),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, color: DuoColors.textMuted, size: 20),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                              _currentPartition = 0;
-                            });
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Fasilitas Pemilihan Kategori (Filter Chips)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip(
-                    label: 'Semua',
-                    icon: Icons.grid_view_rounded,
-                    categoryKey: 'all',
-                    palette: palette,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    label: 'Lari',
-                    icon: Icons.directions_run_rounded,
-                    categoryKey: 'run',
-                    palette: palette,
-                    activeColor: DuoColors.primaryBlue,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    label: 'Sepeda',
-                    icon: Icons.directions_bike_rounded,
-                    categoryKey: 'cycling',
-                    palette: palette,
-                    activeColor: DuoColors.streakGold,
+                  IconButton(
+                    onPressed: eventService.isLoading
+                        ? null
+                        : () => eventService.fetchEvents(forceRefresh: true),
+                    icon: eventService.isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(Icons.refresh_rounded, color: palette.primaryBlue),
+                    tooltip: 'Sinkronkan Live Data',
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
 
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Jadwal Kompetisi Mendatang',
-                          style: TextStyle(color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        if (filteredEvents.length > _eventsPerPage) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: palette.primaryBlue.withOpacity(palette.isDark ? 0.22 : 0.14),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: palette.primaryBlue.withOpacity(0.4), width: 1),
-                            ),
-                            child: Text(
-                              'Partisi ${_currentPartition + 1}/${((filteredEvents.length - 1) ~/ _eventsPerPage) + 1}',
-                              style: TextStyle(
-                                color: palette.primaryBlue,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+              // Race Events List with Partitioning
+              Builder(
+                builder: (context) {
+                  if (filteredEvents.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: palette.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: palette.surfaceBorder),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.search_off_rounded, size: 48, color: palette.textMuted),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Kompetisi Tidak Ditemukan',
+                            style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tidak ada lomba yang sesuai dengan kata kunci "$_searchQuery"',
+                            style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                            textAlign: TextAlign.center,
                           ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: eventService.isLiveFromBackend ? DuoColors.questGreen : DuoColors.streakGold,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          eventService.isLiveFromBackend
-                              ? 'LIVE DATA (RunSignup & PostgreSQL)'
-                              : (eventService.isLoading ? 'Menghubungkan ke API...' : 'MODE OFFLINE / CACHED'),
-                          style: TextStyle(
-                            color: eventService.isLiveFromBackend ? DuoColors.questGreen : palette.textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                IconButton(
-                  onPressed: eventService.isLoading
-                      ? null
-                      : () => eventService.fetchEvents(forceRefresh: true),
-                  icon: eventService.isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(Icons.refresh_rounded, color: palette.primaryBlue),
-                  tooltip: 'Sinkronkan Live Data',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                      ),
+                    );
+                  }
 
-            // Race Events List with Partitioning
-            Builder(
-              builder: (context) {
-                if (filteredEvents.isEmpty) {
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: palette.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: palette.surfaceBorder),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.search_off_rounded, size: 48, color: palette.textMuted),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Kompetisi Tidak Ditemukan',
-                          style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Tidak ada lomba yang sesuai dengan kata kunci "$_searchQuery"',
-                          style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                  final totalPartitions = ((filteredEvents.length - 1) ~/ _eventsPerPage) + 1;
+                  final safePartition = _currentPartition.clamp(0, totalPartitions - 1);
+                  final startIndex = safePartition * _eventsPerPage;
+                  final displayedEvents = filteredEvents.skip(startIndex).take(_eventsPerPage).toList();
 
-                final totalPartitions = ((filteredEvents.length - 1) ~/ _eventsPerPage) + 1;
-                final safePartition = _currentPartition.clamp(0, totalPartitions - 1);
-                final startIndex = safePartition * _eventsPerPage;
-                final displayedEvents = filteredEvents.skip(startIndex).take(_eventsPerPage).toList();
+                  return Column(
+                    children: [
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: displayedEvents.length,
+                        itemBuilder: (context, index) {
+                          final ev = displayedEvents[index];
+                          final convertedFee = currencyService.formatCurrency(ev.feeUsd, selectedCurrency);
+                          final raceTimeStr = timezoneService.formatForZone(ev.startTimeUtc, selectedTimezone);
+                          final isDone = _oneAttemptPerRace &&
+                              _completedRuns.containsKey(ev.id.toString());
 
-                return Column(
-                  children: [
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: displayedEvents.length,
-                      itemBuilder: (context, index) {
-                        final ev = displayedEvents[index];
-                        final convertedFee = currencyService.formatCurrency(ev.feeUsd, selectedCurrency);
-                        final raceTimeStr = timezoneService.formatForZone(ev.startTimeUtc, selectedTimezone);
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: DuoCard(
-                            padding: const EdgeInsets.all(16),
-                            onTap: () => _showEventDetailModal(ev),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          ev.type == 'run' ? Icons.directions_run_rounded : Icons.directions_bike_rounded,
-                                          color: ev.type == 'run' ? palette.primaryBlue : DuoColors.streakGold,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: palette.primaryBlue.withOpacity(palette.isDark ? 0.20 : 0.12),
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: palette.primaryBlue.withOpacity(0.4), width: 1),
-                                          ),
-                                          child: Text(
-                                            '${ev.distanceKm} KM ${ev.type == 'run' ? 'RUN' : 'RIDE'}',
-                                            style: TextStyle(color: palette.primaryBlue, fontSize: 10, fontWeight: FontWeight.w900),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Flexible(
-                                      child: Row(
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: DuoCard(
+                              padding: const EdgeInsets.all(16),
+                              onTap: () async {
+                                // Muat ulang status selesai agar tidak basi
+                                await _loadCompletedRuns();
+                                if (mounted) _showEventDetailModal(ev);
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          if (ev.officialUrl != null && ev.officialUrl!.isNotEmpty) ...[
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              margin: const EdgeInsets.only(right: 6),
-                                              decoration: BoxDecoration(
-                                                color: DuoColors.questGreen.withOpacity(0.18),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: DuoColors.questGreen, width: 1),
-                                              ),
-                                              child: const Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(Icons.fiber_manual_record, size: 7, color: DuoColors.questGreen),
-                                                  SizedBox(width: 3),
-                                                  Text(
-                                                    'LIVE',
-                                                    style: TextStyle(color: DuoColors.questGreen, fontSize: 9, fontWeight: FontWeight.w900),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
+                                          Icon(
+                                            ev.type == 'run' ? Icons.directions_run_rounded : Icons.directions_bike_rounded,
+                                            color: ev.type == 'run' ? palette.primaryBlue : DuoColors.streakGold,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 6),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: palette.background,
+                                              color: palette.primaryBlue.withOpacity(palette.isDark ? 0.20 : 0.12),
                                               borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: palette.surfaceBorder),
+                                              border: Border.all(color: palette.primaryBlue.withOpacity(0.4), width: 1),
                                             ),
                                             child: Text(
-                                              TimezoneService.getRelativeCountdown(ev.startTimeUtc),
-                                              style: const TextStyle(color: DuoColors.streakGold, fontSize: 10, fontWeight: FontWeight.w700),
+                                              '${ev.distanceKm} KM ${ev.type == 'run' ? 'RUN' : 'RIDE'}',
+                                              style: TextStyle(color: palette.primaryBlue, fontSize: 10, fontWeight: FontWeight.w900),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  ev.title,
-                                  style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-                                ),
-                                if (ev.location != null && ev.location!.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.location_on_rounded, color: DuoColors.streakGold, size: 14),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          ev.location!,
-                                          style: TextStyle(color: palette.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                      Flexible(
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (ev.officialUrl != null && ev.officialUrl!.isNotEmpty) ...[
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                margin: const EdgeInsets.only(right: 6),
+                                                decoration: BoxDecoration(
+                                                  color: DuoColors.questGreen.withOpacity(0.18),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(color: DuoColors.questGreen, width: 1),
+                                                ),
+                                                child: const Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.fiber_manual_record, size: 7, color: DuoColors.questGreen),
+                                                    SizedBox(width: 3),
+                                                    Text(
+                                                      'LIVE',
+                                                      style: TextStyle(color: DuoColors.questGreen, fontSize: 9, fontWeight: FontWeight.w900),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: palette.background,
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: palette.surfaceBorder),
+                                              ),
+                                              child: Text(
+                                                TimezoneService.getRelativeCountdown(ev.startTimeUtc),
+                                                style: const TextStyle(color: DuoColors.streakGold, fontSize: 10, fontWeight: FontWeight.w700),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
-                                const Divider(height: 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          ev.title,
+                                          style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      if (isDone)
+                                        Container(
+                                          margin: const EdgeInsets.only(left: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: DuoColors.questGreen.withOpacity(0.18),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: DuoColors.questGreen),
+                                          ),
+                                          child: const Text(
+                                            'SUDAH IKUT',
+                                            style: TextStyle(
+                                              color: DuoColors.questGreen,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  if (ev.location != null && ev.location!.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Row(
                                       children: [
-                                        Text('Start (${selectedTimezone.code})', style: TextStyle(color: palette.textMuted, fontSize: 11)),
-                                        Text(raceTimeStr, style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
-                                      ],
-                                    ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text('Biaya ($selectedCurrency)', style: TextStyle(color: palette.textMuted, fontSize: 11)),
-                                        Text(convertedFee, style: const TextStyle(color: DuoColors.questGreen, fontWeight: FontWeight.bold, fontSize: 15)),
+                                        const Icon(Icons.location_on_rounded, color: DuoColors.streakGold, size: 14),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            ev.location!,
+                                            style: TextStyle(color: palette.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ],
-                                ),
-                              ],
+                                  const Divider(height: 20),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Start (${selectedTimezone.code})', style: TextStyle(color: palette.textMuted, fontSize: 11)),
+                                          Text(raceTimeStr, style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text('Biaya ($selectedCurrency)', style: TextStyle(color: palette.textMuted, fontSize: 11)),
+                                          Text(convertedFee, style: const TextStyle(color: DuoColors.questGreen, fontWeight: FontWeight.bold, fontSize: 15)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      ),
 
-                    // Partition Selector Controls
-                    _buildPartitionSelector(
-                      currentPartition: safePartition,
-                      totalPartitions: totalPartitions,
-                      totalEvents: filteredEvents.length,
-                      palette: palette,
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
+                      // Partition Selector Controls
+                      _buildPartitionSelector(
+                        currentPartition: safePartition,
+                        totalPartitions: totalPartitions,
+                        totalEvents: filteredEvents.length,
+                        palette: palette,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildPartitionSelector({
     required int currentPartition,

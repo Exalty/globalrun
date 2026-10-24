@@ -51,7 +51,36 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     super.initState();
     _location = Provider.of<LocationTrackingService>(context, listen: false);
     _sensor = Provider.of<MotionSensorService>(context, listen: false);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startRaceSession());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _guardOrStart());
+  }
+
+  /// Jika event ini sudah pernah diikuti, jangan mulai tracking.
+  /// Langsung tampilkan hasil lari sebelumnya.
+  Future<void> _guardOrStart() async {
+    if (RunHistoryService.oneAttemptPerRace) {
+      try {
+        final prev = (await RunHistoryService().attemptsByEvent())[
+            widget.event.id.toString()];
+        if (prev != null) {
+          if (!mounted) return;
+          // Tandai agar dispose() tidak menganggap ini keluar paksa saat race
+          _isFinishing = true;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RunSummaryScreen(
+                record: prev,
+                blockchainService: widget.blockchainService,
+              ),
+            ),
+          );
+          return;
+        }
+      } catch (e) {
+        debugPrint('Cek riwayat race gagal: $e');
+      }
+    }
+    if (mounted) _startRaceSession();
   }
 
   Future<void> _startRaceSession() async {
@@ -109,7 +138,8 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
           reached
               ? 'Target tercapai. Lari akan disimpan dan medali NFT dibuat.'
               : 'Jarak ${_location.totalDistanceKm.toStringAsFixed(2)} / ${widget.event.distanceKm} KM. '
-                  'Lari tetap disimpan ke riwayat, tetapi medali NFT hanya diberikan jika target tercapai.',
+                  'Lari tetap disimpan ke riwayat, tetapi medali NFT hanya diberikan jika target tercapai.'
+                  '${RunHistoryService.oneAttemptPerRace ? '\n\nRace ini hanya bisa diikuti sekali, jadi kamu tidak bisa mengulanginya.' : ''}',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -442,10 +472,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
           const SizedBox(width: 6),
           Flexible(
             child: Text(text,
