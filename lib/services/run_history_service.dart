@@ -3,6 +3,19 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/run_record.dart';
 
+class RunStats {
+  final double totalKm;
+  final int raceCount;   // jumlah event berbeda yang diikuti
+  final int medalCount;  // jumlah lari yang berhasil mint medali NFT
+
+  const RunStats({
+    required this.totalKm,
+    required this.raceCount,
+    required this.medalCount,
+  });
+
+  static const empty = RunStats(totalKm: 0, raceCount: 0, medalCount: 0);
+}
 /// Penyimpanan riwayat lari (satu key per lari + satu key indeks).
 class RunHistoryService {
   static final RunHistoryService _instance = RunHistoryService._();
@@ -45,7 +58,23 @@ class RunHistoryService {
     }
     return map;
   }
-
+  /// Statistik karier dihitung dari riwayat lari yang tersimpan.
+  Future<RunStats> computeStats() async {
+    final all = await loadAll();
+    var totalKm = 0.0;
+    final eventIds = <String>{};
+    var medals = 0;
+    for (final r in all) {
+      totalKm += r.distanceKm;
+      eventIds.add(r.eventId);
+      if (r.blockHash != null) medals++;
+    }
+    return RunStats(
+      totalKm: totalKm,
+      raceCount: eventIds.length,
+      medalCount: medals,
+    );
+  }
     /// true = 1 race hanya bisa diikuti sekali (apa pun hasilnya).
   /// Set false saat testing.
   static const bool oneAttemptPerRace = true;
@@ -59,7 +88,7 @@ class RunHistoryService {
     }
     return map;
   }
-  
+
   Future<void> delete(String id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key(id));

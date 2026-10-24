@@ -7,6 +7,7 @@ import '../services/theme_service.dart';
 import '../theme/duo_theme.dart';
 import 'notification_screen.dart';
 import 'topup_screen.dart';
+import '../services/run_history_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -25,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   bool _isBiometricActive = false;
   bool _isBiometricHighlighted = false;
+  RunStats _stats = RunStats.empty;
 
   @override
   void initState() {
@@ -35,10 +37,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     final profile = await _authService.getUserProfile();
     final bioEnabled = await _authService.isBiometricEnabled();
+    final stats = await RunHistoryService().computeStats();
     if (mounted) {
       setState(() {
         _userProfile = profile;
         _isBiometricActive = bioEnabled;
+        _stats = stats;
         _isLoading = false;
       });
     }
@@ -173,7 +177,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
       ),
-      body: SingleChildScrollView(
+      body: RefreshIndicator(
+        onRefresh: _loadProfile,
+        color: palette.primaryBlue,
+        backgroundColor: palette.surface,
+        child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Column(
           children: [
@@ -781,9 +790,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStatColumn('Total Jarak', '42.5 KM', Icons.route_rounded, palette.primaryBlue, palette),
-                      _buildStatColumn('Race Diikuti', '5 Acara', Icons.emoji_events_rounded, DuoColors.streakGold, palette),
-                      _buildStatColumn('Medali NFT', '3 Dicetak', Icons.military_tech_rounded, palette.neonCyan, palette),
+                      _buildStatColumn('Total Jarak', '${_stats.totalKm.toStringAsFixed(2)} KM',
+                          Icons.route_rounded, palette.primaryBlue, palette),
+                      _buildStatColumn('Race Diikuti', '${_stats.raceCount} Acara',
+                          Icons.emoji_events_rounded, DuoColors.streakGold, palette),
+                      _buildStatColumn('Medali NFT', '${_stats.medalCount} Dicetak',
+                          Icons.military_tech_rounded, palette.neonCyan, palette),
                     ],
                   ),
                 ],
@@ -915,6 +927,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
           ],
         ),
+      ),
       ),
     );
   }
