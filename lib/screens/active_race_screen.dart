@@ -423,13 +423,14 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     } else if (location.isSimulating) {
       text = 'LBS Mock Simulator GPS';
       dot = Colors.amber;
-    } else if (!location.hasFix) {
+    } else if (!location.hasFix || location.gpsAccuracy == null) {
+      // Belum ada fix asli dari stream GPS
       text = 'Mencari sinyal GPS...';
       dot = Colors.amber;
     } else {
-      final acc = location.gpsAccuracy;
-      text = acc == null ? 'Live Hardware GPS' : 'Live GPS  ±${acc.round()} m';
-      dot = (acc ?? 99) <= 15 ? Colors.greenAccent : Colors.amber;
+      final acc = location.gpsAccuracy!;
+      text = 'Live GPS  ±${acc.round()} m · ${location.fixCount} fix';
+      dot = acc <= 15 ? Colors.greenAccent : Colors.amber;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -441,7 +442,10 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+          Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
           const SizedBox(width: 6),
           Flexible(
             child: Text(text,

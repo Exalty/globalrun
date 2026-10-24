@@ -13,16 +13,25 @@ class TrackPoint {
 }
 
 class LocationTrackingService extends ChangeNotifier {
+  // ── MODE TES ──────────────────────────────────────────────────────────
+  // true  = pengaturan GPS polos (tanpa foreground service, pakai chip GPS
+  //         langsung). Dipakai untuk mencari penyebab fix tidak masuk.
+  // false = pengaturan produksi (foreground service + background tracking).
+  // Setelah GPS terbukti jalan, ubah ke false.
+  static const bool _testPlainGps = true;
+
   // Ambang filter GPS (sesuaikan bila perlu)
   static const double _maxAccuracyM = 25.0; // abaikan fix dengan akurasi > 25 m
   static const double _minMoveM = 2.0; // abaikan jitter saat diam
   static const double _maxSpeedMs = 12.0; // > 43 km/h = lompatan GPS / tidak wajar
+  static const Duration _noFixTimeout = Duration(seconds: 20);
 
   static const Distance _distance = Distance();
 
   StreamSubscription<Position>? _positionStream;
   StreamSubscription<CompassEvent>? _compassStream;
   Timer? _simulationTimer;
+  Timer? _noFixTimer;
 
   /// Arah hadap HP (derajat, 0 = utara). Pakai ValueNotifier agar hanya
   /// marker yang rebuild, bukan seluruh layar.
@@ -35,6 +44,7 @@ class LocationTrackingService extends ChangeNotifier {
   bool _isPaused = false;
   String? _statusMessage;
   double? _gpsAccuracy;
+  int _fixCount = 0;
 
   final List<LatLng> _routePoints = [];
   final List<TrackPoint> _track = [];
@@ -56,6 +66,7 @@ class LocationTrackingService extends ChangeNotifier {
   bool get hasFix => _currentLocation != null;
   String? get statusMessage => _statusMessage;
   double? get gpsAccuracy => _gpsAccuracy;
+  int get fixCount => _fixCount;
   DateTime? get startTime => _startTime;
 
   UnmodifiableListView<LatLng> get routePoints => UnmodifiableListView(_routePoints);
@@ -81,6 +92,7 @@ class LocationTrackingService extends ChangeNotifier {
     _isTracking = true;
     _stopTime = null;
     _statusMessage = null;
+    _fixCount = 0;
     _startCompass();
 
     if (simulationMode) {
@@ -91,7 +103,9 @@ class LocationTrackingService extends ChangeNotifier {
     }
 
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
+      final serviceOn = await Geolocator.isLocationServiceEnabled();
+      debugPrint('GPS service enabled = $serviceOn');
+      if (!serviceOn) {
         _onUnavailable('GPS perangkat mati. Aktifkan layanan lokasi.');
         return;
       }
@@ -100,6 +114,7 @@ class LocationTrackingService extends ChangeNotifier {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
+      debugPrint('GPS permission = $permission');
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         _onUnavailable('Izin lokasi ditolak. Aktifkan di pengaturan aplikasi.');
@@ -119,9 +134,24 @@ class LocationTrackingService extends ChangeNotifier {
         locationSettings: _buildSettings(),
       ).listen(
         _onPosition,
-        onError: (err) => _onUnavailable('Error GPS: $err'),
+        onError: (err) {
+          debugPrint('GPS STREAM ERROR: $err');
+          _onUnavailable('Error GPS: $err');
+        },
       );
+
+      // Watchdog: kalau 20 detik tidak ada fix, tampilkan peringatan di chip.
+      _noFixTimer?.cancel();
+      _noFixTimer = Timer(_noFixTimeout, () {
+        if (_isTracking && !_isSimulating && _fixCount == 0) {
+          debugPrint('GPS: belum ada fix setelah ${_noFixTimeout.inSeconds} detik');
+          _statusMessage =
+              'Belum ada sinyal GPS. Keluar ke area terbuka & cek izin lokasi.';
+          notifyListeners();
+        }
+      });
     } catch (e) {
+      debugPrint('GPS start gagal: $e');
       _onUnavailable('Gagal memulai GPS: $e');
       return;
     }
@@ -132,23 +162,21 @@ class LocationTrackingService extends ChangeNotifier {
     _startTime ??= DateTime.now();
   }
 
-  /// Release build: JANGAN diam-diam jatuh ke simulasi (bisa dipakai curang).
+  /// Tidak lagi otomatis jatuh ke simulasi, supaya error GPS terlihat jelas
+  /// di chip. Simulasi hanya lewat tombol "Simulasi Test" (debug).
   void _onUnavailable(String message) {
     _statusMessage = message;
     debugPrint('Location unavailable: $message');
-    if (kDebugMode) {
-      _markStarted();
-      _startSimulation();
-    }
     notifyListeners();
   }
 
-  /// Dipakai tombol "Simulasi Test" (sebelumnya tidak berfungsi karena
-  /// startTracking() langsung return saat sudah tracking).
+  /// Dipakai tombol "Simulasi Test".
   void enableSimulation() {
     if (_isSimulating) return;
     _positionStream?.cancel();
     _positionStream = null;
+    _noFixTimer?.cancel();
+    _statusMessage = null;
     _isTracking = true;
     _markStarted();
     _startSimulation();
@@ -156,6 +184,21 @@ class LocationTrackingService extends ChangeNotifier {
   }
 
   LocationSettings _buildSettings() {
+    if (_testPlainGps) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        return AndroidSettings(
+          accuracy: LocationAccuracy.best,
+          distanceFilter: 0,
+          forceLocationManager: true, // chip GPS langsung, bukan Google Play Services
+        );
+      }
+      return const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 0,
+      );
+    }
+
+    // ── Pengaturan produksi ──
     const distanceFilter = 3;
     if (kIsWeb) {
       return const LocationSettings(
@@ -194,7 +237,14 @@ class LocationTrackingService extends ChangeNotifier {
   // ───────────────────────── GPS ─────────────────────────
 
   void _onPosition(Position pos) {
+    debugPrint(
+        'FIX ${pos.latitude},${pos.longitude} acc=${pos.accuracy} sim=$_isSimulating');
     if (_isSimulating) return;
+
+    _fixCount++;
+    _noFixTimer?.cancel();
+    _statusMessage = null; // fix masuk -> hapus pesan error/peringatan
+
     final p = LatLng(pos.latitude, pos.longitude);
     _currentLocation = p; // untuk tampilan peta
     _gpsAccuracy = pos.accuracy;
@@ -244,7 +294,8 @@ class LocationTrackingService extends ChangeNotifier {
     _routePoints.add(p);
     // Haluskan kecepatan agar angka tidak meloncat-loncat
     final clamped = speedKmh.clamp(0.0, 45.0).toDouble();
-    _currentSpeedKmh = _currentSpeedKmh == 0 ? clamped : _currentSpeedKmh * 0.6 + clamped * 0.4;
+    _currentSpeedKmh =
+        _currentSpeedKmh == 0 ? clamped : _currentSpeedKmh * 0.6 + clamped * 0.4;
     notifyListeners();
   }
 
@@ -312,7 +363,7 @@ class LocationTrackingService extends ChangeNotifier {
 
     double angle = 0.0;
     final rand = Random();
-    const stepDeg = 0.000026; // ≈ 2.9 m per detik ≈ 10.4 km/h (sebelumnya ≈ 13 m/dtk)
+    const stepDeg = 0.000026; // ≈ 2.9 m per detik ≈ 10.4 km/h
 
     _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       angle += 0.02;
@@ -338,6 +389,7 @@ class LocationTrackingService extends ChangeNotifier {
     _compassStream?.cancel();
     _compassStream = null;
     _simulationTimer?.cancel();
+    _noFixTimer?.cancel();
     if (_isPaused && _pauseStart != null) {
       _pausedTotal += DateTime.now().difference(_pauseStart!);
       _pauseStart = null;
@@ -363,6 +415,7 @@ class LocationTrackingService extends ChangeNotifier {
     _isPaused = false;
     _usedSimulation = false;
     _statusMessage = null;
+    _fixCount = 0;
     notifyListeners();
   }
 
@@ -371,6 +424,7 @@ class LocationTrackingService extends ChangeNotifier {
     _positionStream?.cancel();
     _compassStream?.cancel();
     _simulationTimer?.cancel();
+    _noFixTimer?.cancel();
     heading.dispose();
     super.dispose();
   }
