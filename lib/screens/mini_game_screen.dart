@@ -518,49 +518,6 @@ class _MiniGameScreenState extends State<MiniGameScreen>
     _prefs?.setBool(_prefInvert, v);
   }
 
-  Future<void> _confirmExit() async {
-    final palette = DuoColors.of(context);
-    if (engine.status == GameStatus.playing) _pause();
-    if (engine.status == GameStatus.paused) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: palette.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: palette.surfaceBorder, width: 2),
-          ),
-          title: Text(
-            'Keluar dari Game?',
-            style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900),
-          ),
-          content: Text(
-            'Sesi lari saat ini akan dihentikan.',
-            style: TextStyle(color: palette.textSecondary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('Batal', style: TextStyle(color: palette.textMuted, fontWeight: FontWeight.bold)),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DuoColors.heartRed,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
-          ],
-        ),
-      );
-      if (ok != true) return;
-    }
-    _commitScore();
-    if (mounted) Navigator.of(context).pop();
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) _pause();
@@ -585,18 +542,17 @@ class _MiniGameScreenState extends State<MiniGameScreen>
     final palette = DuoColors.of(context);
 
     return PopScope(
-      canPop: engine.status != GameStatus.playing && engine.status != GameStatus.paused,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (engine.status == GameStatus.playing) {
           _pause();
-        } else if (engine.status == GameStatus.paused) {
-          _confirmExit();
         }
       },
       child: Scaffold(
         backgroundColor: palette.background,
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           title: Text(
             'MINI GAME',
             style: TextStyle(
@@ -909,26 +865,6 @@ class _MiniGameScreenState extends State<MiniGameScreen>
     );
   }
 
-  Widget _secondaryButton(String label, VoidCallback onTap, DuoColorPalette palette) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        alignment: Alignment.center,
-        child: Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: palette.textMuted,
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-            letterSpacing: 0.8,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _modeSelector(DuoColorPalette palette) {
     return Column(
       children: [
@@ -1040,8 +976,6 @@ class _MiniGameScreenState extends State<MiniGameScreen>
       children: [
         _modeSelector(palette),
         _primaryButton('Mulai Lari', _startGame),
-        const SizedBox(height: 4),
-        _secondaryButton('Kembali', _confirmExit, palette),
       ],
     );
   }
@@ -1063,8 +997,6 @@ class _MiniGameScreenState extends State<MiniGameScreen>
           borderRadius: 14,
           height: 48,
         ),
-        const SizedBox(height: 4),
-        _secondaryButton('Keluar Game', _confirmExit, palette),
       ],
     );
   }
@@ -1128,8 +1060,6 @@ class _MiniGameScreenState extends State<MiniGameScreen>
         ),
         _modeSelector(palette),
         _primaryButton('Main Lagi', _startGame),
-        const SizedBox(height: 4),
-        _secondaryButton('Keluar Game', _confirmExit, palette),
       ],
     );
   }
