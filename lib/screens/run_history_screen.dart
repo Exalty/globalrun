@@ -3,6 +3,7 @@ import '../models/run_record.dart';
 import '../services/blockchain_service.dart';
 import '../services/run_history_service.dart';
 import 'run_summary_screen.dart';
+import '../theme/duo_theme.dart';
 
 /// Daftar riwayat lari. Dibuka dari kotak Statistik Kompetisi di ProfileScreen:
 /// Navigator.push(context, MaterialPageRoute(builder: (_) => RunHistoryScreen(blockchainService: ...)));
@@ -29,13 +30,25 @@ class _RunHistoryScreenState extends State<RunHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
     final bc = widget.blockchainService ?? BlockchainService();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: palette.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Riwayat Lari', style: TextStyle(fontWeight: FontWeight.bold)),
+        iconTheme: IconThemeData(color: palette.textPrimary),
+        backgroundColor: palette.surface,
+        elevation: 0,
+        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
+        title: Text(
+          'RIWAYAT LARI',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            fontSize: 18,
+            color: palette.textPrimary,
+          ),
+        ),
       ),
       body: FutureBuilder<List<RunRecord>>(
         future: _future,
@@ -45,14 +58,14 @@ class _RunHistoryScreenState extends State<RunHistoryScreen> {
           }
           final runs = snap.data ?? [];
           if (runs.isEmpty) {
-            return const Center(
-              child: Text('Belum ada riwayat lari.', style: TextStyle(color: Colors.white54)),
+            return Center(
+              child: Text('Belum ada riwayat lari.', style: TextStyle(color: palette.textSecondary)),
             );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: runs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, i) {
               final r = runs[i];
               return Dismissible(
@@ -80,7 +93,8 @@ class _RunHistoryScreenState extends State<RunHistoryScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
+                      color: palette.surface,
+                      border: Border.all(color: palette.surfaceBorder, width: 1.5),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
@@ -98,11 +112,11 @@ class _RunHistoryScreenState extends State<RunHistoryScreen> {
                               Text(r.eventTitle,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: Colors.white, fontWeight: FontWeight.bold)),
+                                  style: TextStyle(
+                                      color: palette.textPrimary, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 2),
                               Text(RunFormat.date(r.startedAt),
-                                  style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                                  style: TextStyle(color: palette.textSecondary, fontSize: 11)),
                             ],
                           ),
                         ),
@@ -110,11 +124,11 @@ class _RunHistoryScreenState extends State<RunHistoryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text('${r.distanceKm.toStringAsFixed(2)} km',
-                                style: const TextStyle(
-                                    color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                                style: TextStyle(
+                                    color: palette.primaryBlue, fontWeight: FontWeight.bold)),
                             Text(
                               '${RunFormat.duration(r.durationSeconds)} • ${RunFormat.pace(r.avgPaceSecPerKm)}/km',
-                              style: const TextStyle(color: Colors.white54, fontSize: 11),
+                              style: TextStyle(color: palette.textSecondary, fontSize: 11),
                             ),
                           ],
                         ),

@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../models/blockchain_record.dart';
 import '../models/run_record.dart';
 import '../services/blockchain_service.dart';
+import '../theme/duo_theme.dart';
 import 'blockchain_certificate_screen.dart';
 
 /// Ringkasan lari ala Strava: peta rute (fit ke seluruh jejak), statistik, split per KM.
@@ -37,12 +38,24 @@ class RunSummaryScreen extends StatelessWidget {
             ? blockchainService!.blockAt(record.blockIndex!)
             : null);
 
+    final palette = DuoColors.of(context);
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: Text(record.eventTitle,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        iconTheme: IconThemeData(color: palette.textPrimary),
+        title: Text(
+          record.eventTitle.toUpperCase(),
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            fontSize: 18,
+            color: palette.textPrimary,
+          ),
+        ),
+        backgroundColor: palette.surface,
+        elevation: 0,
+        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
       ),
       body: Column(
         children: [

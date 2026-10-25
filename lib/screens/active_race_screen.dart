@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' show pi;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
@@ -344,7 +343,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
       builder: (ctx) => SafeArea(
         child: AnimatedBuilder(
           animation: _location,
-          builder: (_, __) {
+          builder: (context, child) {
             final pace = _location.simPaceSecPerKm;
             final remainingKm =
                 (targetKm - _location.totalDistanceKm).clamp(0.0, targetKm).toDouble();
@@ -557,7 +556,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                     // Hanya marker yang rebuild saat kompas berubah
                     child: ValueListenableBuilder<double>(
                       valueListenable: location.heading,
-                      builder: (_, deg, __) => Transform.rotate(
+                      builder: (context, deg, child) => Transform.rotate(
                         angle: deg * pi / 180.0,
                         child: _buildArrow(),
                       ),
