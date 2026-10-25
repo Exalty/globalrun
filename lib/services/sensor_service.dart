@@ -14,6 +14,10 @@ class MotionSensorService extends ChangeNotifier {
   bool _isPaused = false;
   Timer? _simulationTimer;
 
+  // Kontrol simulasi (demo): pengali kecepatan waktu
+  int _simSpeed = 1;
+  double _extraStepFrac = 0.0;
+
   // Peak detection state
   double _lastMagnitude = 0.0;
   DateTime _lastStepTime = DateTime.now();
@@ -24,6 +28,7 @@ class MotionSensorService extends ChangeNotifier {
   bool get isListening => _isListening;
   bool get isSimulating => _isSimulating;
   bool get isPaused => _isPaused;
+  int get simSpeed => _simSpeed;
 
   void startTracking({bool simulationMode = false}) {
     if (_isListening) return;
@@ -62,6 +67,19 @@ class MotionSensorService extends ChangeNotifier {
     _accelSubscription = null;
     _isListening = true;
     _startSimulation();
+    notifyListeners();
+  }
+
+  /// Pengali waktu simulasi (harus sama dengan LocationTrackingService).
+  void setSimulationSpeed(int factor) {
+    _simSpeed = factor.clamp(1, 60).toInt();
+    notifyListeners();
+  }
+
+  /// Menambah langkah sekaligus (dipakai saat "Lompat ke Finish").
+  void addSimulatedSteps(int count) {
+    if (count <= 0) return;
+    _stepCount += count;
     notifyListeners();
   }
 
@@ -108,6 +126,15 @@ class MotionSensorService extends ChangeNotifier {
     _simulationTimer?.cancel();
     final rand = Random();
     _simulationTimer = Timer.periodic(const Duration(milliseconds: 350), (timer) {
+      // Saat waktu simulasi dipercepat, langkah ikut bertambah proporsional
+      if (_simSpeed > 1 && !_isPaused) {
+        _extraStepFrac += (_simSpeed - 1) * 0.5;
+        final whole = _extraStepFrac.floor();
+        if (whole > 0) {
+          _stepCount += whole;
+          _extraStepFrac -= whole;
+        }
+      }
       _processSensorReading(1.8 + rand.nextDouble() * 3.5);
     });
   }
@@ -127,6 +154,8 @@ class MotionSensorService extends ChangeNotifier {
     _currentMagnitude = 0.0;
     _lastMagnitude = 0.0;
     _motionState = 'Diam (Stationary)';
+    _simSpeed = 1;
+    _extraStepFrac = 0.0;
     notifyListeners();
   }
 

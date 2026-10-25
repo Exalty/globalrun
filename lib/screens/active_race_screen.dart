@@ -21,6 +21,10 @@ import 'run_summary_screen.dart';
 /// Untuk demo: lari hasil simulasi boleh mint NFT. Set false di produksi.
 const bool _mintSimulatedRuns = true;
 
+/// Tampilkan tombol & kontrol simulasi (percepat / lompat ke finish).
+/// Set false di produksi.
+const bool _showSimulationTools = true;
+
 class ActiveRaceScreen extends StatefulWidget {
   final RaceEvent event;
   final BlockchainService blockchainService;
@@ -264,6 +268,204 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
 
   // ───────────────────────── UI ─────────────────────────
 
+  // ───────────────────────── KONTROL SIMULASI (DEMO) ─────────────────────────
+
+  /// Lompat langsung ke garis finish memakai pace simulasi yang dipilih.
+  void _skipToFinish() {
+    if (_isFinishing) return;
+    if (_location.isPaused) {
+      _location.resume();
+      _sensor.resume();
+    }
+    if (!_location.isSimulating) {
+      _location.enableSimulation();
+      _sensor.enableSimulation();
+    }
+    final skipped = _location.skipSimulationTo(widget.event.distanceKm.toDouble());
+    _sensor.addSimulatedSteps((skipped * 1.4).round());
+    _finishRace(targetReached: true);
+  }
+
+  Widget _simChip(String label, bool selected, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Colors.cyanAccent : const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: selected ? Colors.cyanAccent : Colors.white24),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.black : Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _simInfoRow(String label, String value, {Color? valueColor}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor ?? Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSimulationSheet() {
+    const speeds = [1, 5, 10, 30];
+    const paces = [240, 300, 360, 450, 540]; // detik per KM
+    final targetKm = widget.event.distanceKm.toDouble();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: AnimatedBuilder(
+          animation: _location,
+          builder: (_, __) {
+            final pace = _location.simPaceSecPerKm;
+            final remainingKm =
+                (targetKm - _location.totalDistanceKm).clamp(0.0, targetKm).toDouble();
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.bolt_rounded, color: Colors.amber, size: 24),
+                      SizedBox(width: 8),
+                      Text('Kontrol Simulasi (Demo)',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Estimasi berdasarkan pace yang dipilih
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Column(
+                      children: [
+                        _simInfoRow('Target', '${widget.event.distanceKm} KM'),
+                        _simInfoRow('Kecepatan rata-rata',
+                            '${(3600 / pace).toStringAsFixed(1)} km/h'),
+                        _simInfoRow(
+                          'Estimasi total waktu',
+                          RunFormat.duration((targetKm * pace).round()),
+                          valueColor: Colors.cyanAccent,
+                        ),
+                        _simInfoRow(
+                          'Sisa waktu',
+                          RunFormat.duration((remainingKm * pace).round()),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text('PACE SIMULASI',
+                      style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: paces
+                        .map((p) => _simChip(
+                              '${RunFormat.pace(p)} /km',
+                              pace == p,
+                              () => _location.setSimulationPace(p),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text('KECEPATAN WAKTU',
+                      style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: speeds
+                        .map((s) => _simChip(
+                              '${s}x',
+                              _location.simSpeed == s,
+                              () {
+                                _location.setSimulationSpeed(s);
+                                _sensor.setSimulationSpeed(s);
+                              },
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _skipToFinish();
+                      },
+                      icon: const Icon(Icons.fast_forward_rounded),
+                      label: const Text('Lompat ke Finish'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sensor = Provider.of<MotionSensorService>(context);
@@ -376,17 +578,21 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Flexible(child: _buildGpsChip(location)),
-              if (kDebugMode) ...[
+              if (_showSimulationTools) ...[
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     if (!location.isSimulating) {
                       location.enableSimulation();
                       sensor.enableSimulation();
+                    } else {
+                      _showSimulationSheet();
                     }
                   },
                   icon: const Icon(Icons.bolt_rounded, size: 16),
-                  label: Text(location.isSimulating ? 'Simulating' : 'Simulasi Test'),
+                  label: Text(location.isSimulating
+                      ? 'Simulasi ${location.simSpeed}x'
+                      : 'Simulasi Test'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         location.isSimulating ? Colors.amber : const Color(0xFF1E293B),

@@ -13,11 +13,11 @@ class TrackPoint {
 }
 
 class LocationTrackingService extends ChangeNotifier {
-  // ── MODE TES ──────────────────────────────────────────────────────────
+  // ── MODE TES GPS ──────────────────────────────────────────────────────
   // true  = pengaturan GPS polos (tanpa foreground service, pakai chip GPS
   //         langsung). Dipakai untuk mencari penyebab fix tidak masuk.
   // false = pengaturan produksi (foreground service + background tracking).
-  // Setelah GPS terbukti jalan, ubah ke false.
+  // SAMAKAN dengan nilai yang sedang kamu pakai di project.
   static const bool _testPlainGps = true;
 
   // Ambang filter GPS (sesuaikan bila perlu)
@@ -59,6 +59,15 @@ class LocationTrackingService extends ChangeNotifier {
   DateTime? _pauseStart;
   Duration _pausedTotal = Duration.zero;
 
+  // ── Kontrol simulasi (demo) ───────────────────────────────────────────
+  static const double _simRadiusM = 145.0; // radius lintasan melingkar simulasi
+  final Random _rand = Random();
+  int _simSpeed = 1; // pengali waktu: 1x, 5x, 10x, 30x
+  int _simPaceSecPerKm = 360; // pace simulasi (6:00 /km = 10 km/h)
+  Duration _simBonus = Duration.zero; // waktu tambahan akibat percepatan/skip
+  double _simAngle = 0.0;
+  LatLng? _simPos;
+
   bool get isTracking => _isTracking;
   bool get isSimulating => _isSimulating;
   bool get usedSimulation => _usedSimulation;
@@ -68,6 +77,8 @@ class LocationTrackingService extends ChangeNotifier {
   double? get gpsAccuracy => _gpsAccuracy;
   int get fixCount => _fixCount;
   DateTime? get startTime => _startTime;
+  int get simSpeed => _simSpeed;
+  int get simPaceSecPerKm => _simPaceSecPerKm;
 
   UnmodifiableListView<LatLng> get routePoints => UnmodifiableListView(_routePoints);
   UnmodifiableListView<TrackPoint> get trackPoints => UnmodifiableListView(_track);
@@ -78,10 +89,11 @@ class LocationTrackingService extends ChangeNotifier {
 
   /// Waktu bergerak: otomatis berhenti saat pause / stop, dan akurat
   /// walau app di background (berbasis DateTime, bukan hitungan Timer).
+  /// _simBonus hanya terisi saat simulasi dipercepat / dilompati.
   Duration get elapsed {
     if (_startTime == null) return Duration.zero;
     final end = _pauseStart ?? _stopTime ?? DateTime.now();
-    final d = end.difference(_startTime!) - _pausedTotal;
+    final d = end.difference(_startTime!) - _pausedTotal + _simBonus;
     return d.isNegative ? Duration.zero : d;
   }
 
@@ -163,7 +175,7 @@ class LocationTrackingService extends ChangeNotifier {
   }
 
   /// Tidak lagi otomatis jatuh ke simulasi, supaya error GPS terlihat jelas
-  /// di chip. Simulasi hanya lewat tombol "Simulasi Test" (debug).
+  /// di chip. Simulasi hanya lewat tombol "Simulasi Test".
   void _onUnavailable(String message) {
     _statusMessage = message;
     debugPrint('Location unavailable: $message');
@@ -262,12 +274,24 @@ class LocationTrackingService extends ChangeNotifier {
     _addTrackPoint(p, max(0.0, pos.speed) * 3.6);
   }
 
-  void _addTrackPoint(LatLng p, double speedKmh, {bool validate = true}) {
+  /// [atMs] : cap waktu titik (ms). Dipakai simulasi yang dipercepat.
+  /// [notify]: false untuk batch (notifikasi dikirim sekali di akhir).
+  void _addTrackPoint(
+    LatLng p,
+    double speedKmh, {
+    bool validate = true,
+    int? atMs,
+    bool notify = true,
+  }) {
+    void done() {
+      if (notify) notifyListeners();
+    }
+
     if (_isPaused) {
-      notifyListeners();
+      done();
       return;
     }
-    final nowMs = elapsed.inMilliseconds;
+    final nowMs = atMs ?? elapsed.inMilliseconds;
     final last = _lastAccepted;
 
     if (last != null && validate && !_skipNextDistance) {
@@ -275,11 +299,11 @@ class LocationTrackingService extends ChangeNotifier {
       final dt = (nowMs - last.elapsedMs) / 1000.0;
       if (d < _minMoveM) {
         _currentSpeedKmh = 0.0; // diam / jitter
-        notifyListeners();
+        done();
         return;
       }
       if (dt > 0 && d / dt > _maxSpeedMs) {
-        notifyListeners(); // lompatan GPS, buang
+        done(); // lompatan GPS, buang
         return;
       }
       _totalDistanceMeters += d;
@@ -296,7 +320,7 @@ class LocationTrackingService extends ChangeNotifier {
     final clamped = speedKmh.clamp(0.0, 45.0).toDouble();
     _currentSpeedKmh =
         _currentSpeedKmh == 0 ? clamped : _currentSpeedKmh * 0.6 + clamped * 0.4;
-    notifyListeners();
+    done();
   }
 
   // ───────────────────────── KOMPAS ─────────────────────────
@@ -348,37 +372,88 @@ class LocationTrackingService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ───────────────────────── SIMULASI (debug) ─────────────────────────
+  // ───────────────────────── SIMULASI (demo) ─────────────────────────
+
+  /// Pengali waktu simulasi: 1 = real time, 10 = 10x lebih cepat.
+  void setSimulationSpeed(int factor) {
+    _simSpeed = factor.clamp(1, 60).toInt();
+    notifyListeners();
+  }
+
+  /// Pace simulasi dalam detik per KM (contoh 360 = 6:00 /km).
+  void setSimulationPace(int secPerKm) {
+    _simPaceSecPerKm = secPerKm.clamp(180, 900).toInt();
+    notifyListeners();
+  }
 
   void _startSimulation() {
     _isSimulating = true;
     _usedSimulation = true;
     _simulationTimer?.cancel();
 
-    LatLng current = _currentLocation ?? const LatLng(-6.2185, 106.8026);
-    _currentLocation = current;
+    _simPos = _currentLocation ?? const LatLng(-6.2185, 106.8026);
+    _currentLocation = _simPos;
+    _simAngle = 0.0;
     if (_routePoints.isEmpty) {
-      _addTrackPoint(current, 0, validate: false);
+      _addTrackPoint(_simPos!, 0, validate: false);
     }
 
-    double angle = 0.0;
-    final rand = Random();
-    const stepDeg = 0.000026; // ≈ 2.9 m per detik ≈ 10.4 km/h
+    _simulationTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => _simTick());
+  }
 
-    _simulationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      angle += 0.02;
-      final next = LatLng(
-        current.latitude + stepDeg * cos(angle) + (rand.nextDouble() - 0.5) * 0.000004,
-        current.longitude + stepDeg * sin(angle) + (rand.nextDouble() - 0.5) * 0.000004,
-      );
-      if (!_hasCompass) {
-        _setHeading(_distance.bearing(current, next), alpha: 0.5);
-      }
-      current = next;
-      _currentLocation = next;
-      _gpsAccuracy = 5.0;
-      _addTrackPoint(next, 9.0 + rand.nextDouble() * 3.0, validate: false);
-    });
+  /// Satu tick real = [_simSpeed] detik waktu simulasi.
+  void _simTick() {
+    if (!_isSimulating || _isPaused) return;
+    final baseMs = elapsed.inMilliseconds;
+    for (var k = 0; k < _simSpeed; k++) {
+      _simAdvance(1, atMs: baseMs + k * 1000, notify: false);
+    }
+    // Majukan jam lari agar sinkron dengan jarak yang sudah ditempuh
+    if (_simSpeed > 1) _simBonus += Duration(seconds: _simSpeed - 1);
+    notifyListeners();
+  }
+
+  /// Menggerakkan pelari simulasi sejauh [seconds] detik pada pace saat ini.
+  void _simAdvance(int seconds, {required int atMs, bool notify = true}) {
+    final cur = _simPos ?? _currentLocation ?? const LatLng(-6.2185, 106.8026);
+    final speedMs = 1000.0 / _simPaceSecPerKm;
+    final stepDeg = speedMs * seconds / 111320.0; // meter -> derajat
+    _simAngle += speedMs * seconds / _simRadiusM; // lintasan melingkar
+
+    final next = LatLng(
+      cur.latitude + stepDeg * cos(_simAngle) + (_rand.nextDouble() - 0.5) * 0.000004,
+      cur.longitude + stepDeg * sin(_simAngle) + (_rand.nextDouble() - 0.5) * 0.000004,
+    );
+    if (!_hasCompass) {
+      _setHeading(_distance.bearing(cur, next), alpha: 0.5);
+    }
+    _simPos = next;
+    _currentLocation = next;
+    _gpsAccuracy = 5.0;
+
+    final kmh = (3600.0 / _simPaceSecPerKm) * (0.97 + _rand.nextDouble() * 0.06);
+    _addTrackPoint(next, kmh, validate: false, atMs: atMs, notify: notify);
+  }
+
+  /// Lompat langsung sampai jarak [targetKm] (hanya saat simulasi aktif).
+  /// Rute, jarak, dan waktu ikut terisi seolah lari sungguhan pada pace
+  /// simulasi. Mengembalikan jumlah detik simulasi yang dilompati.
+  int skipSimulationTo(double targetKm) {
+    if (!_isSimulating || _isPaused) return 0;
+    final targetM = targetKm * 1000.0;
+    if (_totalDistanceMeters >= targetM) return 0;
+
+    const stepSec = 5; // satu titik per 5 detik agar data tidak terlalu besar
+    final baseMs = elapsed.inMilliseconds;
+    var skipped = 0;
+    while (_totalDistanceMeters < targetM && skipped < 24 * 3600) {
+      skipped += stepSec;
+      _simAdvance(stepSec, atMs: baseMs + skipped * 1000, notify: false);
+    }
+    _simBonus += Duration(seconds: skipped);
+    notifyListeners();
+    return skipped;
   }
 
   // ───────────────────────── RESET / DISPOSE ─────────────────────────
@@ -416,6 +491,10 @@ class LocationTrackingService extends ChangeNotifier {
     _usedSimulation = false;
     _statusMessage = null;
     _fixCount = 0;
+    _simBonus = Duration.zero;
+    _simSpeed = 1;
+    _simAngle = 0.0;
+    _simPos = null;
     notifyListeners();
   }
 

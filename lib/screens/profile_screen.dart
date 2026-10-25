@@ -8,11 +8,17 @@ import '../theme/duo_theme.dart';
 import 'notification_screen.dart';
 import 'topup_screen.dart';
 import '../services/run_history_service.dart';
+import '../services/blockchain_service.dart';
+import 'run_history_screen.dart';
+import 'blockchain_certificate_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
 
-  const ProfileScreen({super.key, required this.onLogout});
+  /// Opsional. Jika null dipakai BlockchainService() (singleton).
+  final BlockchainService? blockchainService;
+
+  const ProfileScreen({super.key, required this.onLogout, this.blockchainService});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -55,6 +61,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       MaterialPageRoute(builder: (_) => const TopUpScreen()),
     );
     if (changed == true) _loadProfile();
+  }
+
+  /// Statistik Kompetisi -> Riwayat Lari
+  Future<void> _openRunHistory() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RunHistoryScreen(
+          blockchainService: widget.blockchainService ?? BlockchainService(),
+        ),
+      ),
+    );
+    if (mounted) _loadProfile(); // lari bisa dihapus di riwayat -> perbarui statistik
+  }
+
+  /// Statistik Kompetisi -> Sertifikat & Medali NFT
+  Future<void> _openMedals() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlockchainCertificateScreen(
+          blockchainService: widget.blockchainService ?? BlockchainService(),
+        ),
+      ),
+    );
+    if (mounted) _loadProfile();
   }
 
   /// Mengarahkan dan scroll halus ke kartu pengaturan sidik jari di halaman profil
@@ -791,11 +823,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildStatColumn('Total Jarak', '${_stats.totalKm.toStringAsFixed(2)} KM',
-                          Icons.route_rounded, palette.primaryBlue, palette),
+                          Icons.route_rounded, palette.primaryBlue, palette,
+                          onTap: _openRunHistory),
                       _buildStatColumn('Race Diikuti', '${_stats.raceCount} Acara',
-                          Icons.emoji_events_rounded, DuoColors.streakGold, palette),
+                          Icons.emoji_events_rounded, DuoColors.streakGold, palette,
+                          onTap: _openRunHistory),
                       _buildStatColumn('Medali NFT', '${_stats.medalCount} Dicetak',
-                          Icons.military_tech_rounded, palette.neonCyan, palette),
+                          Icons.military_tech_rounded, palette.neonCyan, palette,
+                          onTap: _openMedals),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.touch_app_rounded, size: 14, color: palette.textMuted),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Ketuk untuk melihat riwayat lari & medali NFT',
+                        style: TextStyle(color: palette.textMuted, fontSize: 11),
+                      ),
                     ],
                   ),
                 ],
@@ -982,18 +1029,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatColumn(String label, String value, IconData icon, Color color, DuoColorPalette palette) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 28),
-        const SizedBox(height: 8),
-        Text(value, style: TextStyle(color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 2),
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(color: palette.textMuted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+  Widget _buildStatColumn(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    DuoColorPalette palette, {
+    VoidCallback? onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(value,
+                  style: TextStyle(
+                      color: palette.textPrimary, fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 2),
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(
+                    color: palette.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 

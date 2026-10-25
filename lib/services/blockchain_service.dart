@@ -27,7 +27,12 @@ class BlockchainService {
   /// Jumlah medali (tanpa blok genesis).
   int get medalCount => _chain.where((b) => !b.isGenesis).length;
 
-  BlockchainService() {
+  // Singleton: semua BlockchainService() di app memakai satu instance yang sama,
+  // sehingga rantai di memori tidak pernah berbeda antar layar.
+  static final BlockchainService _instance = BlockchainService._internal();
+  factory BlockchainService() => _instance;
+
+  BlockchainService._internal() {
     ready = _initLedger();
   }
 
