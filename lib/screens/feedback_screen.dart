@@ -1,72 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../theme/duo_theme.dart';
 
-class FeedbackScreen extends StatefulWidget {
+class FeedbackScreen extends StatelessWidget {
   const FeedbackScreen({super.key});
-
-  @override
-  State<FeedbackScreen> createState() => _FeedbackScreenState();
-}
-
-class _FeedbackScreenState extends State<FeedbackScreen> {
-  final _kesanController = TextEditingController();
-  final _saranController = TextEditingController();
-  double _rating = 5.0;
-  bool _isSubmitted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSavedFeedback();
-  }
-
-  Future<void> _loadSavedFeedback() async {
-    final prefs = await SharedPreferences.getInstance();
-    final kesan = prefs.getString('saved_kesan');
-    final saran = prefs.getString('saved_saran');
-    final rating = prefs.getDouble('saved_rating');
-
-    if (kesan != null || saran != null) {
-      if (mounted) {
-        setState(() {
-          _kesanController.text = kesan ?? '';
-          _saranController.text = saran ?? '';
-          _rating = rating ?? 5.0;
-          _isSubmitted = true;
-        });
-      }
-    }
-  }
-
-  Future<void> _saveFeedback() async {
-    if (_kesanController.text.trim().isEmpty || _saranController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mohon isi kesan dan saran terlebih dahulu!'),
-          backgroundColor: DuoColors.heartRed,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_kesan', _kesanController.text.trim());
-    await prefs.setString('saved_saran', _saranController.text.trim());
-    await prefs.setDouble('saved_rating', _rating);
-
-    if (mounted) {
-      setState(() => _isSubmitted = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: DuoColors.questGreen,
-          content: Text('Kesan & Saran untuk Mata Kuliah berhasil disimpan!'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,14 +23,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         ),
         backgroundColor: palette.surface,
         elevation: 0,
-        shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
+        shape: Border(
+          bottom: BorderSide(color: palette.surfaceBorder, width: 2),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Info Card (Duolingo 3D)
             DuoCard(
               padding: const EdgeInsets.all(18),
               child: Row(
@@ -102,12 +40,18 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: palette.primaryBlue.withOpacity(palette.isDark ? 0.18 : 0.12),
+                      color: palette.primaryBlue.withOpacity(
+                        palette.isDark ? 0.18 : 0.12,
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: palette.primaryBlue, width: 2),
                     ),
                     child: Center(
-                      child: Icon(Icons.school_rounded, color: palette.primaryBlue, size: 28),
+                      child: Icon(
+                        Icons.school_rounded,
+                        color: palette.primaryBlue,
+                        size: 28,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -126,8 +70,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Evaluasi pengalaman belajar & pengembangan proyek Tugas Akhir',
-                          style: TextStyle(color: palette.textSecondary, fontSize: 11),
+                          'Evaluasi pengalaman belajar dan pengembangan proyek aplikasi mobile.',
+                          style: TextStyle(
+                            color: palette.textSecondary,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -135,10 +82,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Rating Card (Duolingo 3D)
             DuoCard(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -156,39 +100,49 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   const SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(5, (index) {
-                      final isFilled = index < _rating;
-                      return GestureDetector(
-                        onTap: () => setState(() => _rating = (index + 1).toDouble()),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isFilled
-                                ? DuoColors.streakGold.withOpacity(0.18)
-                                : palette.background,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isFilled ? DuoColors.streakGold : palette.surfaceBorder,
-                              width: 2,
-                            ),
-                          ),
-                          child: Icon(
-                            isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
-                            color: isFilled ? DuoColors.streakGold : palette.textMuted,
-                            size: 30,
+                    children: List.generate(
+                      5,
+                      (index) => Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: index < 4
+                              ? DuoColors.streakGold.withOpacity(0.18)
+                              : palette.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: index < 4
+                                ? DuoColors.streakGold
+                                : palette.surfaceBorder,
+                            width: 2,
                           ),
                         ),
-                      );
-                    }),
+                        child: Icon(
+                          index < 4
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
+                          color: index < 4
+                              ? DuoColors.streakGold
+                              : palette.textMuted,
+                          size: 30,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Text(
+                      '4 out of 5 stars',
+                      style: TextStyle(
+                        color: palette.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Kesan Input Card (Duolingo 3D)
             DuoCard(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -204,33 +158,22 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _kesanController,
-                    maxLines: 4,
-                    style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                    decoration: InputDecoration(
-                      hintText: 'Tuliskan kesan menarik, tantangan, atau pengalaman berharga saat mengikuti kuliah...',
-                      hintStyle: TextStyle(color: palette.textMuted, fontSize: 12),
-                      filled: true,
-                      fillColor: palette.background,
-                      contentPadding: const EdgeInsets.all(14),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: palette.surfaceBorder, width: 2),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: palette.primaryBlue, width: 2),
-                      ),
+                  Text(
+                    'Perkuliahan Pemrograman Aplikasi Mobile memberikan '
+                    'pengalaman belajar yang menarik karena dapat memahami '
+                    'proses pengembangan aplikasi secara langsung, mulai '
+                    'dari pembuatan antarmuka hingga implementasi fitur.',
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
                     ),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // Saran Input Card (Duolingo 3D)
             DuoCard(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -246,41 +189,21 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _saranController,
-                    maxLines: 4,
-                    style: TextStyle(color: palette.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-                    decoration: InputDecoration(
-                      hintText: 'Tuliskan kritik dan saran konstruktif untuk materi, praktikum, atau fasilitas...',
-                      hintStyle: TextStyle(color: palette.textMuted, fontSize: 12),
-                      filled: true,
-                      fillColor: palette.background,
-                      contentPadding: const EdgeInsets.all(14),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: palette.surfaceBorder, width: 2),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: palette.primaryBlue, width: 2),
-                      ),
+                  Text(
+                    'Semoga pembelajaran ke depannya semakin interaktif, '
+                    'dilengkapi dengan studi kasus nyata, serta memberikan '
+                    'lebih banyak kesempatan untuk praktik dan '
+                    'mengembangkan aplikasi secara bertahap.',
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
                     ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 24),
-
-            // Submit 3D Button
-            DuoButton(
-              text: _isSubmitted ? 'PERBARUI KESAN & SARAN' : 'SIMPAN KESAN & SARAN',
-              width: double.infinity,
-              height: 52,
-              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-              onPressed: _saveFeedback,
-            ),
-
             const SizedBox(height: 16),
           ],
         ),
