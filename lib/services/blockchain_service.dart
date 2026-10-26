@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/blockchain_record.dart';
+import 'auth_service.dart';
 
 class BlockchainService {
-  static const String _storageKey = 'global_race_blockchain_ledger';
+
 
   static const String _genesisPrev =
       '0000000000000000000000000000000000000000000000000000000000000000';
@@ -38,10 +39,16 @@ class BlockchainService {
 
   // ───────────────────────── INIT / STORAGE ─────────────────────────
 
+  Future<String> _getStorageKey() async {
+    final uid = await AuthService().getCurrentUserId();
+    return 'blockchain_ledger_v2_${uid ?? "default"}';
+  }
+
   Future<void> _initLedger() async {
     try {
+      final storageKey = await _getStorageKey();
       final prefs = await SharedPreferences.getInstance();
-      final jsonList = prefs.getStringList(_storageKey);
+      final jsonList = prefs.getStringList(storageKey);
 
       if (jsonList != null && jsonList.isNotEmpty) {
         _chain.clear();
@@ -60,9 +67,16 @@ class BlockchainService {
   }
 
   Future<void> _saveLedger() async {
+    final storageKey = await _getStorageKey();
     final prefs = await SharedPreferences.getInstance();
     final jsonList = _chain.map((b) => jsonEncode(b.toJson())).toList();
-    await prefs.setStringList(_storageKey, jsonList);
+    await prefs.setStringList(storageKey, jsonList);
+  }
+
+  /// Muat ulang buku besar ledger untuk user akun yang aktif
+  Future<void> reloadForUser() async {
+    ready = _initLedger();
+    await ready;
   }
 
   Block _createGenesisBlock() {

@@ -17,6 +17,7 @@ class AuthService {
   static const String _keyUserPhoto = 'user_photo';
   static const String _keyUserWallet = 'user_wallet_balance';
   static const String _keyJwtToken = 'jwt_token';
+  static const String _keyUserId = 'user_id';
 
   static const MethodChannel _settingsChannel = MethodChannel('com.globalrun.app/settings');
 
@@ -26,6 +27,16 @@ class AuthService {
   static const String localhostUrl = 'http://localhost:5000';
 
   final LocalAuthentication _localAuth = LocalAuthentication();
+
+  // Ambil ID Akun Saat Ini (Supabase UUID atau Lokal Key)
+  Future<String?> getCurrentUserId() async {
+    try {
+      final supaUser = Supabase.instance.client.auth.currentUser;
+      if (supaUser != null) return supaUser.id;
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyUserId) ?? prefs.getString(_keyUserEmail);
+  }
 
   // Helper hashing SHA-256 (Otentikasi mandiri non-Firebase)
   static String hashPassword(String password) {
@@ -127,6 +138,7 @@ class AuthService {
             'email': cleanEmail,
             'wallet_usd': 250.0,
           });
+          await prefs.setString(_keyUserId, res.user!.id);
         } catch (_) {}
       }
     } catch (_) {
@@ -199,7 +211,21 @@ class AuthService {
       if (res.session != null && res.user != null) {
         await prefs.setBool(_keyIsLoggedIn, true);
         await prefs.setString(_keyUserEmail, cleanEmail);
-        final name = res.user!.userMetadata?['full_name'] ?? prefs.getString(_keyUserName) ?? 'Virtual Runner';
+        await prefs.setString(_keyUserId, res.user!.id);
+        var name = res.user!.userMetadata?['full_name'] ?? prefs.getString(_keyUserName) ?? 'Virtual Runner';
+        
+        // Ambil profil & saldo akun asli dari database Supabase
+        try {
+          final profileData = await client.from('profiles').select().eq('id', res.user!.id).maybeSingle();
+          if (profileData != null) {
+            final wallet = (profileData['wallet_usd'] as num?)?.toDouble() ?? 250.0;
+            await prefs.setDouble(_keyUserWallet, wallet);
+            if (profileData['full_name'] != null && (profileData['full_name'] as String).isNotEmpty) {
+              name = profileData['full_name'];
+            }
+          }
+        } catch (_) {}
+
         await prefs.setString(_keyUserName, name);
         return {'success': true, 'source': 'online', 'message': 'Login berhasil (Database Online Supabase)!'};
       }
@@ -325,28 +351,66 @@ class AuthService {
     return prefs.getBool(_keyBiometricEnabled) ?? false;
   }
 
-  // Ambil Data Profil Pengguna
+  // Sinkronisasi saldo akun ke Supabase Cloud
+  Future<void> _syncWalletToCloud(double newWallet) async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user != null) {
+        await client.from('profiles').update({'wallet_usd': newWallet}).eq('id', user.id);
+      }
+    } catch (e) {
+      // Offline fallback
+    }
+  }
+
+  // Ambil Data Profil Pengguna (Sinkron Cloud & Cache Lokal)
   Future<Map<String, dynamic>> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
+    double wallet = prefs.getDouble(_keyUserWallet) ?? 250.0;
+    String name = prefs.getString(_keyUserName) ?? '';
+
+    // Tarik saldo & profil terbaru dari Supabase jika online
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user != null) {
+        final data = await client.from('profiles').select().eq('id', user.id).maybeSingle().timeout(const Duration(seconds: 2));
+        if (data != null) {
+          if (data['wallet_usd'] != null) {
+            wallet = (data['wallet_usd'] as num).toDouble();
+            await prefs.setDouble(_keyUserWallet, wallet);
+          }
+          if (data['full_name'] != null && (data['full_name'] as String).isNotEmpty) {
+            name = data['full_name'];
+            await prefs.setString(_keyUserName, name);
+          }
+        }
+      }
+    } catch (_) {}
+
     return {
-      'name': prefs.getString(_keyUserName) ?? '',
+      'name': name,
       'email': prefs.getString(_keyUserEmail) ?? '',
-      'wallet': prefs.getDouble(_keyUserWallet) ?? 250.0,
+      'wallet': wallet,
       'photo': prefs.getString(_keyUserPhoto) ?? '',
       'isBiometricEnabled': prefs.getBool(_keyBiometricEnabled) ?? false,
     };
   }
-    double _round4(double v) => (v * 10000).round() / 10000;
+
+  double _round4(double v) => (v * 10000).round() / 10000;
 
   Future<double> getWalletUsd() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_keyUserWallet) ?? 250.0;
+    final profile = await getUserProfile();
+    return (profile['wallet'] as num?)?.toDouble() ?? 250.0;
   }
 
   Future<void> addToWallet(double usd) async {
     final prefs = await SharedPreferences.getInstance();
     final current = prefs.getDouble(_keyUserWallet) ?? 250.0;
-    await prefs.setDouble(_keyUserWallet, _round4(current + usd));
+    final updated = _round4(current + usd);
+    await prefs.setDouble(_keyUserWallet, updated);
+    await _syncWalletToCloud(updated);
   }
 
   /// false jika saldo tidak cukup (saldo tidak berubah).
@@ -354,14 +418,18 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final current = prefs.getDouble(_keyUserWallet) ?? 250.0;
     if (usd <= 0 || current + 0.0001 < usd) return false;
-    await prefs.setDouble(_keyUserWallet, _round4(current - usd));
+    final updated = _round4(current - usd);
+    await prefs.setDouble(_keyUserWallet, updated);
+    await _syncWalletToCloud(updated);
     return true;
   }
 
-  // Logout Saja
+  // Logout Saja (Bersihkan cache sesi agar akun berikutnya tidak mewarisi saldo)
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIsLoggedIn, false);
+    await prefs.remove(_keyUserWallet);
+    await prefs.remove(_keyUserId);
     try {
       await Supabase.instance.client.auth.signOut();
     } catch (_) {}

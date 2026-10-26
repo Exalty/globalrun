@@ -46,15 +46,19 @@ class PaymentService {
   factory PaymentService() => _instance;
   PaymentService._();
 
-  static const String _paidKey = 'paid_event_ids';
-  static const String _txKey = 'payment_transactions';
   static const int _maxTx = 100;
 
   final AuthService _auth = AuthService();
 
+  Future<String> _paidKey() async =>
+      'paid_event_ids_${await _auth.getCurrentUserId() ?? "default"}';
+  Future<String> _txKey() async =>
+      'payment_transactions_${await _auth.getCurrentUserId() ?? "default"}';
+
   Future<bool> isPaid(String eventId) async {
     final prefs = await SharedPreferences.getInstance();
-    return (prefs.getStringList(_paidKey) ?? const <String>[]).contains(eventId);
+    final key = await _paidKey();
+    return (prefs.getStringList(key) ?? const <String>[]).contains(eventId);
   }
 
   /// Potong saldo untuk biaya pendaftaran. Aman dipanggil berulang:
@@ -71,9 +75,10 @@ class PaymentService {
     if (!ok) return PayResult.insufficient;
 
     final prefs = await SharedPreferences.getInstance();
-    final paid = prefs.getStringList(_paidKey) ?? <String>[];
+    final key = await _paidKey();
+    final paid = prefs.getStringList(key) ?? <String>[];
     if (!paid.contains(eventId)) paid.add(eventId);
-    await prefs.setStringList(_paidKey, paid);
+    await prefs.setStringList(key, paid);
 
     await _addTransaction(PaymentTransaction(
       id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
@@ -105,7 +110,8 @@ class PaymentService {
 
   Future<List<PaymentTransaction>> loadTransactions() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_txKey) ?? const <String>[];
+    final key = await _txKey();
+    final raw = prefs.getStringList(key) ?? const <String>[];
     final out = <PaymentTransaction>[];
     for (final s in raw) {
       try {
@@ -119,9 +125,10 @@ class PaymentService {
 
   Future<void> _addTransaction(PaymentTransaction tx) async {
     final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_txKey) ?? <String>[];
+    final key = await _txKey();
+    final list = prefs.getStringList(key) ?? <String>[];
     list.insert(0, jsonEncode(tx.toJson()));
     if (list.length > _maxTx) list.removeRange(_maxTx, list.length);
-    await prefs.setStringList(_txKey, list);
+    await prefs.setStringList(key, list);
   }
 }

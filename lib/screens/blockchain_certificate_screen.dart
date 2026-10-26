@@ -26,8 +26,8 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
   @override
   void initState() {
     super.initState();
-    // Tunggu ledger selesai dimuat sebelum membaca rantai
-    widget.blockchainService.ready.then((_) {
+    // Muat ulang ledger terisolasi untuk akun yang sedang login
+    widget.blockchainService.reloadForUser().then((_) {
       if (mounted) {
         setState(() {
           _loaded = true;
