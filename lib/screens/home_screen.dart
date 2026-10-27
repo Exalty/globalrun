@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const int _eventsPerPage = 10;
 
   // Saldo Dompet Atlet & Pengaturan Sembunyikan Saldo
-  double _userWalletUsd = 250.0;
+  double _userWalletUsd = 0.0;
   bool _isBalanceHidden = false;
   static const String _prefHideBalance = 'pref_hide_home_balance';
 
@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final profile = await AuthService().getUserProfile();
       if (mounted) {
         setState(() {
-          _userWalletUsd = (profile['wallet'] as num?)?.toDouble() ?? 250.0;
+          _userWalletUsd = (profile['wallet'] as num?)?.toDouble() ?? 0.0;
           _isBalanceHidden = prefs.getBool(_prefHideBalance) ?? false;
         });
       }

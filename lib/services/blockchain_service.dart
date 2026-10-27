@@ -21,7 +21,7 @@ class BlockchainService {
 
   /// Selesai saat ledger sudah dimuat dari penyimpanan.
   /// Semua pemanggil yang butuh data rantai harus `await ready` dulu.
-  late final Future<void> ready;
+  late Future<void> ready;
 
   List<Block> get chain => List.unmodifiable(_chain);
 
@@ -48,7 +48,16 @@ class BlockchainService {
     try {
       final storageKey = await _getStorageKey();
       final prefs = await SharedPreferences.getInstance();
-      final jsonList = prefs.getStringList(storageKey);
+      var jsonList = prefs.getStringList(storageKey);
+
+      // Migrasi jika key akun ini masih kosong, periksa data di key lama
+      if (jsonList == null || jsonList.isEmpty) {
+        final legacyList = prefs.getStringList('global_race_blockchain_ledger');
+        if (legacyList != null && legacyList.isNotEmpty) {
+          jsonList = legacyList;
+          await prefs.setStringList(storageKey, legacyList);
+        }
+      }
 
       if (jsonList != null && jsonList.isNotEmpty) {
         _chain.clear();
@@ -74,6 +83,12 @@ class BlockchainService {
   }
 
   /// Muat ulang buku besar ledger untuk user akun yang aktif
+  Future<void> clearLedger() async {
+    _chain.clear();
+    _chain.add(_createGenesisBlock());
+    await _saveLedger();
+  }
+
   Future<void> reloadForUser() async {
     ready = _initLedger();
     await ready;

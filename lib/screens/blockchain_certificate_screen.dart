@@ -27,14 +27,54 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
   void initState() {
     super.initState();
     // Muat ulang ledger terisolasi untuk akun yang sedang login
-    widget.blockchainService.reloadForUser().then((_) {
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      await widget.blockchainService.reloadForUser();
+    } catch (e) {
+      debugPrint('Error loading ledger: $e');
+    } finally {
       if (mounted) {
         setState(() {
           _loaded = true;
           _revalidate();
         });
       }
-    });
+    }
+  }
+
+
+  Future<void> _confirmClearLedger() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Kosongkan Medali?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Seluruh koleksi medali lokal akun ini akan dikosongkan.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Kosongkan', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await widget.blockchainService.clearLedger();
+      if (mounted) {
+        setState(_revalidate);
+      }
+    }
   }
 
   void _revalidate() {
@@ -205,6 +245,12 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
         elevation: 0,
         shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
+          if (medalCount > 0)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_rounded),
+              onPressed: _confirmClearLedger,
+              tooltip: 'Kosongkan Medali',
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => setState(_revalidate),
@@ -276,7 +322,7 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                       color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '$medalCount Medali • ${chain.length} Blok',
+                  '$medalCount Medali Koleksi',
                   style: const TextStyle(
                       color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12),
                 ),
@@ -308,10 +354,11 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
               ),
 
             // Certificates / Blocks List
-            ListView.separated(
+            if (medalCount > 0)
+              ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: chain.length,
+              itemCount: medalCount,
               separatorBuilder: (context, i) => Center(
                 child: Container(
                   height: 24,
@@ -320,7 +367,8 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                 ),
               ),
               itemBuilder: (context, index) {
-                final block = chain[chain.length - 1 - index]; // latest first
+                final earned = chain.where((b) => !b.isGenesis).toList();
+                final block = earned[earned.length - 1 - index]; // latest first
                 final isGenesis = block.isGenesis;
                 final isHighlighted = widget.highlightBlock != null &&
                     widget.highlightBlock!.index == block.index;
