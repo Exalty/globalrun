@@ -135,28 +135,40 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     final reached = _location.totalDistanceKm >= widget.event.distanceKm;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Akhiri lari?', style: TextStyle(color: Colors.white)),
-        content: Text(
-          reached
-              ? 'Target tercapai. Lari akan disimpan dan medali NFT dibuat.'
-              : 'Jarak ${_location.totalDistanceKm.toStringAsFixed(2)} / ${widget.event.distanceKm} KM. '
-                  'Lari tetap disimpan ke riwayat, tetapi medali NFT hanya diberikan jika target tercapai.'
-                  '${RunHistoryService.oneAttemptPerRace ? '\n\nRace ini hanya bisa diikuti sekali, jadi kamu tidak bisa mengulanginya.' : ''}',
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Lanjut Lari')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black),
-            child: const Text('Akhiri'),
+      builder: (ctx) {
+        final palette = DuoColors.of(ctx);
+        return AlertDialog(
+          backgroundColor: palette.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: palette.surfaceBorder, width: 2),
           ),
-        ],
-      ),
+          title: Text('Akhiri Lari?', style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900)),
+          content: Text(
+            reached
+                ? 'Target tercapai! Lari akan disimpan dan medali NFT dicetak ke blockchain.'
+                : 'Jarak ${_location.totalDistanceKm.toStringAsFixed(2)} / ${widget.event.distanceKm} KM. '
+                    'Lari tetap disimpan ke riwayat, tetapi medali NFT hanya diberikan jika target tercapai.'
+                    '${RunHistoryService.oneAttemptPerRace ? '\n\nRace ini hanya bisa diikuti sekali, jadi kamu tidak bisa mengulanginya.' : ''}',
+            style: TextStyle(color: palette.textSecondary, fontSize: 13, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Lanjut Lari', style: TextStyle(color: palette.textMuted, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: DuoColors.heartRed,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Akhiri', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
     if (ok == true) _finishRace(targetReached: reached);
   }
@@ -517,15 +529,15 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
         ),
         body: Column(
           children: [
-            Expanded(flex: 5, child: _buildMapArea(location, sensor)),
-            _buildHud(location, sensor, progressRatio, elapsedSec),
+            Expanded(flex: 5, child: _buildMapArea(palette, location, sensor)),
+            _buildHud(palette, location, sensor, progressRatio, elapsedSec),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMapArea(LocationTrackingService location, MotionSensorService sensor) {
+  Widget _buildMapArea(DuoColorPalette palette, LocationTrackingService location, MotionSensorService sensor) {
     return Stack(
       children: [
         FlutterMap(
@@ -586,7 +598,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Flexible(child: _buildGpsChip(location)),
+              Flexible(child: _buildGpsChip(palette, location)),
               if (_showSimulationTools) ...[
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
@@ -604,8 +616,10 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                       : 'Simulasi Test'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
-                        location.isSimulating ? Colors.amber : const Color(0xFF1E293B),
-                    foregroundColor: location.isSimulating ? Colors.black : Colors.white,
+                        location.isSimulating ? DuoColors.streakGold : palette.surface,
+                    foregroundColor: location.isSimulating ? Colors.black : palette.textPrimary,
+                    side: BorderSide(color: palette.surfaceBorder, width: 1.5),
+                    elevation: 2,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
@@ -636,8 +650,10 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
             right: 12,
             bottom: 12,
             child: FloatingActionButton.small(
-              backgroundColor: const Color(0xFF1E293B),
-              foregroundColor: Colors.cyanAccent,
+              backgroundColor: palette.surface,
+              foregroundColor: palette.primaryBlue,
+              shape: CircleBorder(side: BorderSide(color: palette.surfaceBorder, width: 1.5)),
+              elevation: 2,
               onPressed: () {
                 setState(() => _followUser = true);
                 if (_mapReady) _mapController.move(location.currentLocation, 17);
@@ -663,7 +679,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     );
   }
 
-  Widget _buildGpsChip(LocationTrackingService location) {
+  Widget _buildGpsChip(DuoColorPalette palette, LocationTrackingService location) {
     final hasError = location.statusMessage != null && !location.isSimulating;
     final String text;
     final Color dot;
@@ -685,9 +701,12 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withOpacity(0.85),
+        color: palette.surface.withOpacity(0.92),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.5)),
+        border: Border.all(color: palette.surfaceBorder, width: 1.5),
+        boxShadow: [
+          BoxShadow(color: palette.surfaceShadow, offset: const Offset(0, 2)),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -698,21 +717,22 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
             child: Text(text,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: palette.textPrimary, fontSize: 11, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHud(LocationTrackingService location, MotionSensorService sensor,
+  Widget _buildHud(DuoColorPalette palette, LocationTrackingService location, MotionSensorService sensor,
       double progressRatio, int elapsedSec) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E293B),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: palette.surfaceBorder, width: 2)),
       ),
       child: SafeArea(
         top: false,
@@ -724,11 +744,13 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
               children: [
                 Text(
                   '${location.totalDistanceKm.toStringAsFixed(2)} / ${widget.event.distanceKm} KM',
-                  style: const TextStyle(
-                      color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                      color: palette.primaryBlue, fontWeight: FontWeight.w900, fontSize: 18),
                 ),
-                Text('${(progressRatio * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                Text(
+                  '${(progressRatio * 100).toStringAsFixed(1)}%',
+                  style: TextStyle(color: palette.textSecondary, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -736,32 +758,32 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
                 value: progressRatio,
-                backgroundColor: Colors.white12,
-                valueColor: const AlwaysStoppedAnimation(Colors.cyanAccent),
+                backgroundColor: palette.surfaceBorder,
+                valueColor: AlwaysStoppedAnimation(palette.primaryBlue),
                 minHeight: 8,
               ),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildMetricCard(Icons.timer_rounded, 'WAKTU', RunFormat.duration(elapsedSec)),
+                _buildMetricCard(palette, Icons.timer_rounded, 'WAKTU', RunFormat.duration(elapsedSec)),
                 const SizedBox(width: 6),
-                _buildMetricCard(Icons.speed_rounded, 'PACE',
+                _buildMetricCard(palette, Icons.speed_rounded, 'PACE',
                     RunFormat.paceFromSpeed(location.currentSpeedKmh)),
                 const SizedBox(width: 6),
-                _buildMetricCard(Icons.bolt_rounded, 'KM/H',
+                _buildMetricCard(palette, Icons.bolt_rounded, 'KM/H',
                     location.currentSpeedKmh.toStringAsFixed(1)),
                 const SizedBox(width: 6),
-                _buildMetricCard(Icons.directions_walk_rounded, 'STEPS', '${sensor.stepCount}'),
+                _buildMetricCard(palette, Icons.directions_walk_rounded, 'STEPS', '${sensor.stepCount}'),
               ],
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
+                color: palette.background,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white12),
+                border: Border.all(color: palette.surfaceBorder, width: 1.5),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -769,19 +791,19 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                   Expanded(
                     child: Row(
                       children: [
-                        const Icon(Icons.sensors_rounded, color: Colors.amberAccent, size: 18),
+                        const Icon(Icons.sensors_rounded, color: DuoColors.streakGold, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text('Sensor Gerak: ${sensor.motionState}',
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              style: TextStyle(color: palette.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
                   ),
                   Text('Mag: ${sensor.currentMagnitude.toStringAsFixed(2)} m/s²',
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 11, fontFamily: 'monospace')),
+                      style: TextStyle(
+                          color: palette.textMuted, fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -790,33 +812,27 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
               children: [
                 Expanded(
                   flex: 2,
-                  child: OutlinedButton.icon(
+                  child: DuoButton(
+                    text: location.isPaused ? 'LANJUT' : 'PAUSE',
+                    height: 48,
+                    backgroundColor: palette.secondaryButton,
+                    shadowColor: palette.secondaryButtonShadow,
+                    textColor: palette.textPrimary,
+                    icon: Icon(location.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, color: palette.textPrimary, size: 20),
                     onPressed: _togglePause,
-                    icon: Icon(location.isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
-                    label: Text(location.isPaused ? 'Lanjut' : 'Pause'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white24),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   flex: 3,
-                  child: ElevatedButton.icon(
+                  child: DuoButton(
+                    text: 'SELESAI',
+                    height: 48,
+                    backgroundColor: DuoColors.heartRed,
+                    shadowColor: DuoColors.heartRedShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.stop_rounded, color: Colors.white, size: 20),
                     onPressed: _confirmStop,
-                    icon: const Icon(Icons.stop_rounded),
-                    label: const Text('Selesai'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
                   ),
                 ),
               ],
@@ -827,28 +843,28 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     );
   }
 
-  Widget _buildMetricCard(IconData icon, String label, String value) {
+  Widget _buildMetricCard(DuoColorPalette palette, IconData icon, String label, String value) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F172A),
+          color: palette.background,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: palette.surfaceBorder, width: 1.5),
         ),
         child: Column(
           children: [
-            Icon(icon, color: Colors.cyanAccent, size: 20),
+            Icon(icon, color: palette.primaryBlue, size: 20),
             const SizedBox(height: 4),
             Text(label,
-                style: const TextStyle(
-                    color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: palette.textMuted, fontSize: 10, fontWeight: FontWeight.w900)),
             const SizedBox(height: 2),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(value,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: palette.textPrimary, fontSize: 14, fontWeight: FontWeight.w900)),
             ),
           ],
         ),
