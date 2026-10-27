@@ -93,22 +93,23 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
     isLedgerValid = _invalidIndex == null;
   }
 
-  Color _tierColor(String tier) {
+  Color _tierColor(String tier, DuoColorPalette palette) {
+    final isDark = palette.isDark;
     switch (tier) {
       case 'GOLD':
-        return Colors.amber;
+        return isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706);
       case 'SILVER':
-        return const Color(0xFFB0BEC5);
+        return isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B);
       case 'BRONZE':
-        return const Color(0xFFD7845A);
+        return isDark ? const Color(0xFFFB923C) : const Color(0xFFC2410C);
       default:
-        return Colors.blueGrey;
+        return palette.textSecondary;
     }
   }
 
   void _showBlockDetail(Block block) {
     final palette = DuoColors.of(context);
-    final tierColor = _tierColor(block.tier);
+    final tierColor = _tierColor(block.tier, palette);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -125,6 +126,17 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: palette.surfaceBorder,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
                 Row(
                   children: [
                     Icon(Icons.verified_rounded, color: palette.primaryBlue, size: 28),
@@ -182,7 +194,16 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                     Clipboard.setData(ClipboardData(text: block.hash));
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Hash medali berhasil disalin ke clipboard!')),
+                      SnackBar(
+                        backgroundColor: palette.surface,
+                        content: Text('Hash medali berhasil disalin ke clipboard!',
+                            style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold)),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: palette.surfaceBorder, width: 1.5),
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -196,19 +217,19 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
 
   Widget _buildInfoRow(DuoColorPalette palette, String label, String value, {Color? valueColor}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 13)),
+          Text(label, style: TextStyle(color: palette.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(width: 12),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                  color: valueColor ?? Colors.white,
+                  color: valueColor ?? palette.textPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 13),
             ),
@@ -235,7 +256,7 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                   fontSize: 18,
                   color: palette.textPrimary)),
         ),
-        body: const Center(child: CircularProgressIndicator(color: Colors.cyanAccent)),
+        body: Center(child: CircularProgressIndicator(color: palette.primaryBlue)),
       );
     }
 
@@ -261,12 +282,12 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
         actions: [
           if (medalCount > 0)
             IconButton(
-              icon: const Icon(Icons.delete_sweep_rounded),
+              icon: Icon(Icons.delete_sweep_rounded, color: palette.textPrimary),
               onPressed: _confirmClearLedger,
               tooltip: 'Kosongkan Medali',
             ),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: Icon(Icons.refresh_rounded, color: palette.textPrimary),
             onPressed: () => setState(_revalidate),
             tooltip: 'Validasi Ulang Ledger',
           )
@@ -289,7 +310,7 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: (isLedgerValid ? Colors.green : Colors.red).withOpacity(0.25),
+                    color: (isLedgerValid ? Colors.green : Colors.red).withValues(alpha: 0.25),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   )
@@ -333,12 +354,20 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                 Text(
                   'Koleksi Medali Digital (NFT)',
                   style: TextStyle(
-                      color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                      color: palette.textPrimary, fontSize: 18, fontWeight: FontWeight.w900),
                 ),
-                Text(
-                  '$medalCount Medali Koleksi',
-                  style: const TextStyle(
-                      color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: palette.primaryBlue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: palette.primaryBlue.withValues(alpha: 0.25), width: 1.5),
+                  ),
+                  child: Text(
+                    '$medalCount Medali',
+                    style: TextStyle(
+                        color: palette.primaryBlue, fontWeight: FontWeight.w900, fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -373,166 +402,195 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
             // Certificates / Blocks List
             if (medalCount > 0)
               ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: medalCount,
-              separatorBuilder: (context, i) => Center(
-                child: Container(
-                  height: 24,
-                  width: 2,
-                  color: Colors.cyanAccent.withOpacity(0.4),
-                ),
-              ),
-              itemBuilder: (context, index) {
-                final earned = chain.where((b) => !b.isGenesis).toList();
-                final block = earned[earned.length - 1 - index]; // latest first
-                final isGenesis = block.isGenesis;
-                final isHighlighted = widget.highlightBlock != null &&
-                    widget.highlightBlock!.index == block.index;
-                final tierColor = _tierColor(block.tier);
-                final isBroken = _invalidIndex != null && block.index >= _invalidIndex!;
-
-                return GestureDetector(
-                  onTap: () => _showBlockDetail(block),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: medalCount,
+                separatorBuilder: (context, i) => Center(
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    height: 20,
+                    width: 2,
                     decoration: BoxDecoration(
-                      color: palette.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isBroken
-                            ? Colors.redAccent
-                            : isHighlighted
-                                ? Colors.amber
-                                : (isGenesis
-                                    ? Colors.white24
-                                    : Colors.cyanAccent.withOpacity(0.5)),
-                        width: isHighlighted ? 2.5 : 1.5,
-                      ),
-                      boxShadow: isHighlighted
-                          ? [
-                              BoxShadow(
-                                color: Colors.amber.withOpacity(0.35),
-                                blurRadius: 16,
-                                spreadRadius: 1,
-                              )
-                            ]
-                          : null,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: isGenesis
-                                  ? [Colors.blueGrey, Colors.grey]
-                                  : [tierColor, tierColor.withOpacity(0.55)],
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: tierColor.withOpacity(0.4),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            isGenesis ? Icons.hub_rounded : Icons.military_tech_rounded,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Flexible(
-                                    child: Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            isGenesis
-                                                ? 'Genesis Block #0'
-                                                : '${block.tokenId} • ${block.tier}',
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: isGenesis ? Colors.white70 : tierColor,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                        if (isHighlighted) ...[
-                                          const SizedBox(width: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.amber,
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: const Text('BARU',
-                                                style: TextStyle(
-                                                    color: Colors.black,
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w900)),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    block.timestamp.split('T').first,
-                                    style: const TextStyle(color: Colors.white38, fontSize: 11),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                block.raceTitle,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Peserta: ${block.participantName} • ${block.distanceKm.toStringAsFixed(1)} KM • ${block.stepsCount} langkah',
-                                style: const TextStyle(color: Colors.white60, fontSize: 12),
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'Hash: ${block.hash.substring(0, 16)}...',
-                                  style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 11,
-                                      fontFamily: 'monospace'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      color: palette.surfaceBorder,
+                      borderRadius: BorderRadius.circular(1),
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+                itemBuilder: (context, index) {
+                  final earned = chain.where((b) => !b.isGenesis).toList();
+                  final block = earned[earned.length - 1 - index]; // latest first
+                  final isGenesis = block.isGenesis;
+                  final isHighlighted = widget.highlightBlock != null &&
+                      widget.highlightBlock!.index == block.index;
+                  final tierColor = _tierColor(block.tier, palette);
+                  final isBroken = _invalidIndex != null && block.index >= _invalidIndex!;
+
+                  return GestureDetector(
+                    onTap: () => _showBlockDetail(block),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: palette.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isBroken
+                              ? DuoColors.heartRed
+                              : isHighlighted
+                                  ? Colors.amber
+                                  : palette.surfaceBorder,
+                          width: isHighlighted ? 2.5 : 2,
+                        ),
+                        boxShadow: isHighlighted
+                            ? [
+                                BoxShadow(
+                                  color: Colors.amber.withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  spreadRadius: 1,
+                                )
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: palette.surfaceShadow,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isGenesis
+                                    ? [Colors.blueGrey, Colors.grey]
+                                    : [tierColor, tierColor.withValues(alpha: 0.75)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: tierColor.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              isGenesis ? Icons.hub_rounded : Icons.military_tech_rounded,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      child: Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              isGenesis
+                                                  ? 'Genesis Block #0'
+                                                  : '${block.tokenId} • ${block.tier}',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: isGenesis ? palette.textSecondary : tierColor,
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isHighlighted) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.amber,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Text('BARU',
+                                                  style: TextStyle(
+                                                      color: Colors.black,
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w900)),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      block.timestamp.split('T').first,
+                                      style: TextStyle(
+                                          color: palette.textMuted,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  block.raceTitle,
+                                  style: TextStyle(
+                                      color: palette.textPrimary,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 15),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Peserta: ${block.participantName} • ${block.distanceKm.toStringAsFixed(1)} KM • ${block.stepsCount} langkah',
+                                  style: TextStyle(
+                                      color: palette.textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: palette.backgroundAlt,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: palette.surfaceBorder, width: 1.5),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.tag_rounded,
+                                          size: 13, color: palette.textMuted),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          'Hash: ${block.hash.substring(0, 16)}...',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              color: palette.textMuted,
+                                              fontSize: 11,
+                                              fontFamily: 'monospace',
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
           ],
         ),
       ),
