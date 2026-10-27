@@ -66,6 +66,8 @@ class RunRecord {
   final bool isSimulated;
   final int? blockIndex;
   final String? blockHash;
+  final String? polygonTxHash;
+  final String? polygonscanUrl;
   final List<RunPoint> points;
 
   const RunRecord({
@@ -82,6 +84,8 @@ class RunRecord {
     required this.points,
     this.blockIndex,
     this.blockHash,
+    this.polygonTxHash,
+    this.polygonscanUrl,
   });
 
   double get avgSpeedKmh =>
@@ -106,6 +110,27 @@ class RunRecord {
         points: points,
         blockIndex: index,
         blockHash: hash,
+        polygonTxHash: polygonTxHash,
+        polygonscanUrl: polygonscanUrl,
+      );
+
+  
+  RunRecord withPolygon({required String txHash, required String scanUrl}) => RunRecord(
+        id: id,
+        eventId: eventId,
+        eventTitle: eventTitle,
+        startedAt: startedAt,
+        durationSeconds: durationSeconds,
+        distanceKm: distanceKm,
+        targetKm: targetKm,
+        steps: steps,
+        completed: completed,
+        isSimulated: isSimulated,
+        points: points,
+        blockIndex: blockIndex,
+        blockHash: blockHash,
+        polygonTxHash: txHash,
+        polygonscanUrl: scanUrl,
       );
 
   /// Waktu per kilometer penuh (interpolasi antar titik rute).
@@ -145,6 +170,8 @@ class RunRecord {
         'isSimulated': isSimulated,
         'blockIndex': blockIndex,
         'blockHash': blockHash,
+        'polygonTxHash': polygonTxHash,
+        'polygonscanUrl': polygonscanUrl,
         'points': points.map((p) => p.toJson()).toList(),
       };
 
@@ -161,6 +188,8 @@ class RunRecord {
         isSimulated: (j['isSimulated'] as bool?) ?? false,
         blockIndex: (j['blockIndex'] as num?)?.toInt(),
         blockHash: j['blockHash'] as String?,
+        polygonTxHash: j['polygonTxHash'] as String?,
+        polygonscanUrl: j['polygonscanUrl'] as String?,
         points: (j['points'] as List)
             .map((e) => RunPoint.fromJson(e as List))
             .toList(),

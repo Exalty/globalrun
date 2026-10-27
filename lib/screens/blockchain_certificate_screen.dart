@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/blockchain_record.dart';
@@ -19,6 +20,67 @@ class BlockchainCertificateScreen extends StatefulWidget {
 }
 
 class _BlockchainCertificateScreenState extends State<BlockchainCertificateScreen> {
+
+  Future<void> _mintBlockToPolygon(Block block) async {
+    final palette = DuoColors.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: palette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: palette.surfaceBorder, width: 2),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: palette.primaryBlue),
+            const SizedBox(height: 18),
+            Text(
+              'Mencetak ke Polygon Amoy...',
+              style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Menghubungkan ke smart contract on-chain...',
+              style: TextStyle(color: palette.textMuted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final res = await widget.blockchainService.mintToPolygonOnline(block);
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (res != null && res['success'] == true) {
+      setState(_revalidate);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: DuoColors.questGreen,
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Medali berhasil dicetak on-chain di Polygon Amoy!'),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: DuoColors.heartRed,
+          content: Text('Gagal mencetak on-chain. Pastikan server backend aktif dan saldo wallet relayer mencukupi.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   bool _loaded = false;
   bool isLedgerValid = true;
   int? _invalidIndex;
@@ -183,6 +245,75 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                       color: palette.textSecondary, fontFamily: 'monospace', fontSize: 12),
                 ),
                 const SizedBox(height: 20),
+                if (block.polygonTxHash != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: DuoColors.questGreen.withOpacity(palette.isDark ? 0.2 : 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: DuoColors.questGreen.withOpacity(0.4), width: 1.5),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.public_rounded, color: DuoColors.questGreen, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'TERCATAT DI POLYGON AMOY TESTNET',
+                                style: TextStyle(
+                                  color: DuoColors.questGreen,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 10,
+                                ),
+                              ),
+                              Text(
+                                'Tx: ${block.polygonTxHash!.substring(0, 14)}...',
+                                style: TextStyle(
+                                  color: palette.textPrimary,
+                                  fontFamily: 'monospace',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DuoButton(
+                    text: 'LIHAT DI POLYGONSCAN',
+                    height: 48,
+                    backgroundColor: DuoColors.questGreen,
+                    shadowColor: DuoColors.questGreenShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 18),
+                    onPressed: () {
+                      if (block.polygonscanUrl != null) {
+                        launchUrl(Uri.parse(block.polygonscanUrl!), mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ] else if (!block.isGenesis) ...[
+                  DuoButton(
+                    text: 'CETAK KE POLYGON ONLINE',
+                    height: 48,
+                    backgroundColor: DuoColors.streakGold,
+                    shadowColor: DuoColors.streakGoldShadow,
+                    textColor: Colors.black,
+                    icon: const Icon(Icons.cloud_upload_rounded, color: Colors.black, size: 18),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _mintBlockToPolygon(block);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 DuoButton(
                   text: 'SALIN HASH SERTIFIKAT',
                   height: 48,
@@ -507,6 +638,39 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                                               ),
                                             ),
                                           ),
+                                          if (block.polygonTxHash != null) ...[
+                                            const SizedBox(width: 6),
+                                            GestureDetector(
+                                              onTap: () {
+                                                if (block.polygonscanUrl != null) {
+                                                  launchUrl(Uri.parse(block.polygonscanUrl!), mode: LaunchMode.externalApplication);
+                                                }
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: DuoColors.questGreen.withOpacity(0.18),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(color: DuoColors.questGreen, width: 1),
+                                                ),
+                                                child: const Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.public_rounded, color: DuoColors.questGreen, size: 11),
+                                                    SizedBox(width: 3),
+                                                    Text(
+                                                      'Polygonscan',
+                                                      style: TextStyle(
+                                                        color: DuoColors.questGreen,
+                                                        fontSize: 9,
+                                                        fontWeight: FontWeight.w900,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                           if (isHighlighted) ...[
                                             const SizedBox(width: 6),
                                             Container(

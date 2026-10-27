@@ -1,3 +1,4 @@
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -254,4 +255,62 @@ class BlockchainService {
   }
 
   bool verifyLedgerIntegrity() => findInvalidBlockIndex() == null;
+
+  /// Mint medali ke Polygon Amoy on-chain via backend relayer gasless
+  Future<Map<String, dynamic>?> mintToPolygonOnline(Block block) async {
+    final urlsToTry = [
+      AuthService.baseUrl,
+      AuthService.emulatorUrl,
+      AuthService.localhostUrl,
+    ];
+
+    for (final base in urlsToTry) {
+      try {
+        final uri = Uri.parse('$base/api/blockchain/mint');
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'participantName': block.participantName,
+            'raceId': block.raceId,
+            'raceTitle': block.raceTitle,
+            'distanceKm': block.distanceKm,
+            'durationSeconds': block.durationSeconds,
+            'avgSpeedKmh': block.avgSpeedKmh,
+            'tier': block.tier,
+            'localBlockHash': block.hash,
+          }),
+        ).timeout(const Duration(seconds: 15));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['success'] == true && data['txHash'] != null) {
+            final txHash = data['txHash'] as String;
+            final scanUrl = (data['polygonscanUrl'] as String?) ??
+                'https://amoy.polygonscan.com/tx/$txHash';
+
+            // Perbarui blok di dalam ledger memori & lokal
+            final idx = _chain.indexWhere((b) => b.hash == block.hash);
+            if (idx != -1) {
+              _chain[idx] = _chain[idx].copyWith(
+                polygonTxHash: txHash,
+                polygonscanUrl: scanUrl,
+              );
+              await _saveLedger();
+            }
+
+            return {
+              'success': true,
+              'txHash': txHash,
+              'polygonscanUrl': scanUrl,
+            };
+          }
+        }
+      } catch (e) {
+        debugPrint('[BlockchainService] mintToPolygonOnline error on $base: $e');
+      }
+    }
+    return null;
+  }
+
 }

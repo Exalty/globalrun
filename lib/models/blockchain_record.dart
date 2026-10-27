@@ -13,6 +13,8 @@ class Block {
   final double avgSpeedKmh;
   final String previousHash;
   final String hash;
+  final String? polygonTxHash;
+  final String? polygonscanUrl;
 
   Block({
     required this.index,
@@ -26,7 +28,30 @@ class Block {
     required this.avgSpeedKmh,
     required this.previousHash,
     required this.hash,
+    this.polygonTxHash,
+    this.polygonscanUrl,
   });
+
+  Block copyWith({
+    String? polygonTxHash,
+    String? polygonscanUrl,
+  }) {
+    return Block(
+      index: index,
+      timestamp: timestamp,
+      raceId: raceId,
+      raceTitle: raceTitle,
+      participantName: participantName,
+      distanceKm: distanceKm,
+      durationSeconds: durationSeconds,
+      stepsCount: stepsCount,
+      avgSpeedKmh: avgSpeedKmh,
+      previousHash: previousHash,
+      hash: hash,
+      polygonTxHash: polygonTxHash ?? this.polygonTxHash,
+      polygonscanUrl: polygonscanUrl ?? this.polygonscanUrl,
+    );
+  }
 
   // ───────────── Metadata NFT (dihitung, TIDAK masuk ke hash) ─────────────
   // Karena tidak ikut dihitung dalam hash, blok lama tetap valid.
@@ -74,6 +99,8 @@ class Block {
         'avgSpeedKmh': avgSpeedKmh,
         'previousHash': previousHash,
         'hash': hash,
+        'polygonTxHash': polygonTxHash,
+        'polygonscanUrl': polygonscanUrl,
       };
 
   factory Block.fromJson(Map<String, dynamic> json) => Block(
@@ -88,5 +115,7 @@ class Block {
         avgSpeedKmh: (json['avgSpeedKmh'] as num).toDouble(),
         previousHash: json['previousHash'],
         hash: json['hash'],
+        polygonTxHash: json['polygonTxHash'],
+        polygonscanUrl: json['polygonscanUrl'],
       );
 }

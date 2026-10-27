@@ -225,6 +225,18 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
           avgSpeedKmh: avgSpeed,
         );
         record = record.withBlock(minted.index, minted.hash);
+
+        // Auto trigger minting on-chain di Polygon Amoy (Gasless via Backend Relayer)
+        final blockRef = minted;
+        widget.blockchainService.mintToPolygonOnline(blockRef).then((polyRes) {
+          if (polyRes != null && polyRes['success'] == true) {
+            final txHash = polyRes['txHash'] as String;
+            final scanUrl = polyRes['polygonscanUrl'] as String;
+            RunHistoryService().save(record.withPolygon(txHash: txHash, scanUrl: scanUrl));
+          }
+        }).catchError((e) {
+          debugPrint('Polygon online mint fallback: $e');
+        });
       } catch (e) {
         debugPrint('Mint gagal: $e');
       }

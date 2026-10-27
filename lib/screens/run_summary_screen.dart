@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -119,6 +120,31 @@ class RunSummaryScreen extends StatelessWidget {
                     'Blok #${record.blockIndex}  ${record.blockHash!.substring(0, 24)}...',
                     style: TextStyle(
                         color: palette.textMuted, fontSize: 11, fontFamily: 'monospace'),
+                  ),
+                ],
+                if (record.polygonscanUrl != null) ...[
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => launchUrl(
+                      Uri.parse(record.polygonscanUrl!),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.public_rounded, color: DuoColors.questGreen, size: 14),
+                        SizedBox(width: 6),
+                        Text(
+                          'Lihat On-Chain di Polygonscan',
+                          style: TextStyle(
+                            color: DuoColors.questGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
                 const SizedBox(height: 20),
