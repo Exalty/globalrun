@@ -159,10 +159,11 @@ class FeedbackScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Perkuliahan Pemrograman Aplikasi Mobile memberikan '
-                    'pengalaman belajar yang menarik karena dapat memahami '
-                    'proses pengembangan aplikasi secara langsung, mulai '
-                    'dari pembuatan antarmuka hingga implementasi fitur.',
+                    'Perkuliahan Pemrograman Aplikasi Mobile cukup '
+                    'menantang karena kami harus belajar membuat aplikasi, '
+                    'mulai dari tampilan sampai fitur-fiturnya. Kata '
+                    'Bapak, mata kuliah ini seperti es teh yang nyegerin. '
+                    'Tapi setelah ketemu proyek ini, kesegeran es tehnya hilang pak, hhe. ',
                     style: TextStyle(
                       color: palette.textPrimary,
                       fontSize: 13,
@@ -190,10 +191,9 @@ class FeedbackScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Semoga pembelajaran ke depannya semakin interaktif, '
-                    'dilengkapi dengan studi kasus nyata, serta memberikan '
-                    'lebih banyak kesempatan untuk praktik dan '
-                    'mengembangkan aplikasi secara bertahap.',
+                    'Semoga ke depannya makin nyegerin lagi ya, '
+                    'Pak. Semoga tantangannya makin banyak dan seru, '
+                    'biar yang lain juga merasakan kesegeran es teh itu.',
                     style: TextStyle(
                       color: palette.textPrimary,
                       fontSize: 13,
