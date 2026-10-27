@@ -49,6 +49,7 @@ dependencies:
 
   supabase_flutter: ^2.18.3
   flutter_compass: ^0.8.1
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:

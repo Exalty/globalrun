@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -165,6 +167,385 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        await _authService.updateProfile(photoPath: picked.path);
+        await _loadProfile();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: DuoColors.questGreen,
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Foto profil berhasil diperbarui!'),
+                ],
+              ),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: DuoColors.heartRed,
+            content: Text('Gagal mengambil foto: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPhotoPickerBottomSheet() {
+    final palette = DuoColors.of(context);
+    final currentPhoto = _userProfile?['photo'] as String? ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: palette.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: palette.surfaceBorder, width: 2),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: palette.surfaceBorder,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                Text(
+                  'FOTO PROFIL ATLET',
+                  style: TextStyle(
+                    color: palette.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: palette.primaryBlue.withOpacity(palette.isDark ? 0.2 : 0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: palette.primaryBlue, width: 1.5),
+                    ),
+                    child: Icon(Icons.camera_alt_rounded, color: palette.primaryBlue, size: 22),
+                  ),
+                  title: Text(
+                    'Ambil Foto Langsung (Kamera)',
+                    style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    'Gunakan kamera HP untuk swafoto langsung',
+                    style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+                const SizedBox(height: 6),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: DuoColors.streakGold.withOpacity(palette.isDark ? 0.2 : 0.12),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: DuoColors.streakGold, width: 1.5),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded, color: DuoColors.streakGold, size: 22),
+                  ),
+                  title: Text(
+                    'Pilih dari Galeri',
+                    style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    'Pilih foto dari penyimpanan galeri HP',
+                    style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+                if (currentPhoto.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: DuoColors.heartRed.withOpacity(palette.isDark ? 0.2 : 0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: DuoColors.heartRed, width: 1.5),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: DuoColors.heartRed, size: 22),
+                    ),
+                    title: const Text(
+                      'Hapus Foto Profil',
+                      style: TextStyle(color: DuoColors.heartRed, fontWeight: FontWeight.w900, fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      'Gunakan avatar default sistem',
+                      style: TextStyle(color: palette.textSecondary, fontSize: 12),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await _authService.updateProfile(photoPath: '');
+                      await _loadProfile();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Foto profil berhasil dihapus.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openEditProfileDialog() {
+    final palette = DuoColors.of(context);
+    final currentName = _userProfile?['name'] as String? ?? '';
+    final nameController = TextEditingController(text: currentName);
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final photoPath = _userProfile?['photo'] as String? ?? '';
+            final bool hasPhoto = photoPath.isNotEmpty;
+            final bool isLocalFile = hasPhoto && !photoPath.startsWith('http');
+            final bool fileExists = isLocalFile ? File(photoPath).existsSync() : false;
+
+            return AlertDialog(
+              backgroundColor: palette.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+                side: BorderSide(color: palette.surfaceBorder, width: 2),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.edit_rounded, color: palette.primaryBlue, size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    'EDIT PROFIL',
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Photo preview with click to change
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showPhotoPickerBottomSheet();
+                      },
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: palette.background,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: palette.primaryBlue, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: palette.primaryBlueShadow,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: (hasPhoto && (fileExists || photoPath.startsWith('http')))
+                                  ? (isLocalFile
+                                      ? Image.file(
+                                          File(photoPath),
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.network(
+                                          photoPath,
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        ))
+                                  : Icon(Icons.person_rounded, size: 48, color: palette.primaryBlue),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: palette.primaryBlue,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: palette.surface, width: 2),
+                              ),
+                              child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            _pickImage(ImageSource.camera);
+                          },
+                          icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                          label: const Text('Kamera', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            _pickImage(ImageSource.gallery);
+                          },
+                          icon: const Icon(Icons.photo_library_rounded, size: 16),
+                          label: const Text('Galeri', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'NAMA LENGKAP',
+                        style: TextStyle(
+                          color: palette.textSecondary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: palette.backgroundAlt,
+                        hintText: 'Masukkan nama atlet...',
+                        hintStyle: TextStyle(color: palette.textMuted),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: palette.surfaceBorder, width: 2),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: palette.surfaceBorder, width: 2),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: palette.primaryBlue, width: 2),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('Batal', style: TextStyle(color: palette.textMuted, fontWeight: FontWeight.bold)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: palette.primaryBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  onPressed: () async {
+                    final newName = nameController.text.trim();
+                    if (newName.isNotEmpty) {
+                      final messenger = ScaffoldMessenger.of(context);
+                      await _authService.updateProfile(name: newName);
+                      await _loadProfile();
+                      if (ctx.mounted) {
+                        Navigator.pop(ctx);
+                      }
+                      messenger.showSnackBar(
+                        SnackBar(
+                          backgroundColor: DuoColors.questGreen,
+                          content: const Row(
+                            children: [
+                              Icon(Icons.check_circle_rounded, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Profil berhasil diperbarui!'),
+                            ],
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.w900)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = DuoColors.of(context);
@@ -183,6 +564,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final selectedCurrency = currencyService.selectedCurrency;
     final selectedTimezone = timezoneService.selectedTimezone;
 
+    final photoPath = _userProfile?['photo'] as String? ?? '';
     final name = (_userProfile?['name'] != null && _userProfile!['name'].toString().isNotEmpty)
         ? _userProfile!['name']
         : 'Atlet Global';
@@ -225,36 +607,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Stack(
                     children: [
-                      Container(
-                        width: 90,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: palette.background,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: palette.primaryBlue, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: palette.primaryBlueShadow,
-                              offset: const Offset(0, 4),
-                              blurRadius: 0,
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(Icons.person_rounded, size: 54, color: palette.primaryBlue),
+                      GestureDetector(
+                        onTap: _showPhotoPickerBottomSheet,
+                        child: Container(
+                          width: 90,
+                          height: 90,
+                          decoration: BoxDecoration(
+                            color: palette.background,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: palette.primaryBlue, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: palette.primaryBlueShadow,
+                                offset: const Offset(0, 4),
+                                blurRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: (photoPath.isNotEmpty && (!photoPath.startsWith('http') ? File(photoPath).existsSync() : true))
+                                ? (!photoPath.startsWith('http')
+                                    ? Image.file(
+                                        File(photoPath),
+                                        width: 90,
+                                        height: 90,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Icon(Icons.person_rounded, size: 54, color: palette.primaryBlue),
+                                      )
+                                    : Image.network(
+                                        photoPath,
+                                        width: 90,
+                                        height: 90,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Icon(Icons.person_rounded, size: 54, color: palette.primaryBlue),
+                                      ))
+                                : Icon(Icons.person_rounded, size: 54, color: palette.primaryBlue),
+                          ),
                         ),
                       ),
                       Positioned(
                         bottom: 0,
                         right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            color: DuoColors.questGreen,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: palette.surface, width: 2.5),
+                        child: GestureDetector(
+                          onTap: _showPhotoPickerBottomSheet,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: palette.primaryBlue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: palette.surface, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: palette.primaryBlueShadow,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
                           ),
-                          child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
                         ),
                       ),
                     ],
@@ -299,6 +709,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onTap: _scrollToBiometricSetting,
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: DuoButton(
+                      text: 'EDIT PROFIL',
+                      height: 44,
+                      backgroundColor: palette.secondaryButton,
+                      shadowColor: palette.secondaryButtonShadow,
+                      textColor: palette.secondaryButtonText,
+                      icon: Icon(Icons.edit_rounded, color: palette.secondaryButtonText, size: 18),
+                      onPressed: _openEditProfileDialog,
+                    ),
                   ),
                 ],
               ),
@@ -900,67 +1323,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 18),
 
-            // 7.5 Status Dual Database
-            DuoCard(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: DuoColors.questGreen.withOpacity(palette.isDark ? 0.18 : 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: DuoColors.questGreen, width: 1.5),
-                        ),
-                        child: const Icon(Icons.storage_rounded, color: DuoColors.questGreen, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ARSITEKTUR BASIS DATA',
-                              style: TextStyle(
-                                color: palette.textPrimary,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Implementasi Dual Database (Lokal & Online)',
-                              style: TextStyle(color: palette.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  const Divider(color: DuoColors.surfaceBorder, height: 1),
-                  const SizedBox(height: 12),
-                  _buildDbRow(
-                    label: 'Database Lokal',
-                    system: 'PostgreSQL Server (Port 5000)',
-                    palette: palette,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildDbRow(
-                    label: 'Database Online',
-                    system: 'Supabase Cloud (PostgreSQL)',
-                    palette: palette,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
             // 8. Logout 3D Button (Duolingo Red Button)
             DuoButton(
               text: 'LOGOUT DARI AKUN',
@@ -1066,41 +1428,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDbRow({
-    required String label,
-    required String system,
-    required DuoColorPalette palette,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(color: palette.textPrimary, fontSize: 12, fontWeight: FontWeight.bold)),
-            Text(system, style: TextStyle(color: palette.textMuted, fontSize: 11)),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: DuoColors.questGreen.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: DuoColors.questGreen, width: 1),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_rounded, color: DuoColors.questGreen, size: 13),
-              SizedBox(width: 4),
-              Text(
-                'AKTIF',
-                style: TextStyle(color: DuoColors.questGreen, fontSize: 10, fontWeight: FontWeight.w900),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }

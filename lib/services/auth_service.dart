@@ -367,15 +367,26 @@ class AuthService {
   // Ambil Data Profil Pengguna (Sinkron Cloud & Cache Lokal)
   Future<Map<String, dynamic>> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
+    final uid = await getCurrentUserId();
     double wallet = prefs.getDouble(_keyUserWallet) ?? 0.0;
-    String name = prefs.getString(_keyUserName) ?? '';
+    String name = (uid != null ? prefs.getString('${_keyUserName}_$uid') : null) ??
+        prefs.getString(_keyUserName) ??
+        '';
+    String photo = (uid != null ? prefs.getString('${_keyUserPhoto}_$uid') : null) ??
+        prefs.getString(_keyUserPhoto) ??
+        '';
 
     // Tarik saldo & profil terbaru dari Supabase jika online
     try {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
       if (user != null) {
-        final data = await client.from('profiles').select().eq('id', user.id).maybeSingle().timeout(const Duration(seconds: 2));
+        final data = await client
+            .from('profiles')
+            .select()
+            .eq('id', user.id)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 2));
         if (data != null) {
           if (data['wallet_usd'] != null) {
             wallet = (data['wallet_usd'] as num).toDouble();
@@ -384,6 +395,14 @@ class AuthService {
           if (data['full_name'] != null && (data['full_name'] as String).isNotEmpty) {
             name = data['full_name'];
             await prefs.setString(_keyUserName, name);
+            if (uid != null) await prefs.setString('${_keyUserName}_$uid', name);
+          }
+          if (data['avatar_url'] != null && (data['avatar_url'] as String).isNotEmpty) {
+            if (photo.isEmpty) {
+              photo = data['avatar_url'];
+              await prefs.setString(_keyUserPhoto, photo);
+              if (uid != null) await prefs.setString('${_keyUserPhoto}_$uid', photo);
+            }
           }
         }
       }
@@ -393,9 +412,45 @@ class AuthService {
       'name': name,
       'email': prefs.getString(_keyUserEmail) ?? '',
       'wallet': wallet,
-      'photo': prefs.getString(_keyUserPhoto) ?? '',
+      'photo': photo,
       'isBiometricEnabled': prefs.getBool(_keyBiometricEnabled) ?? false,
     };
+  }
+
+  // Perbarui Nama dan/atau Foto Profil Pengguna
+  Future<void> updateProfile({String? name, String? photoPath}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = await getCurrentUserId();
+
+    if (name != null && name.trim().isNotEmpty) {
+      final cleanName = name.trim();
+      await prefs.setString(_keyUserName, cleanName);
+      if (uid != null) {
+        await prefs.setString('${_keyUserName}_$uid', cleanName);
+      }
+      try {
+        final client = Supabase.instance.client;
+        final user = client.auth.currentUser;
+        if (user != null) {
+          await client.from('profiles').update({'full_name': cleanName}).eq('id', user.id);
+          await client.auth.updateUser(UserAttributes(data: {'full_name': cleanName}));
+        }
+      } catch (_) {}
+    }
+
+    if (photoPath != null) {
+      await prefs.setString(_keyUserPhoto, photoPath);
+      if (uid != null) {
+        await prefs.setString('${_keyUserPhoto}_$uid', photoPath);
+      }
+      try {
+        final client = Supabase.instance.client;
+        final user = client.auth.currentUser;
+        if (user != null) {
+          await client.from('profiles').update({'avatar_url': photoPath}).eq('id', user.id);
+        }
+      } catch (_) {}
+    }
   }
 
   double _round4(double v) => (v * 10000).round() / 10000;
