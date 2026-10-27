@@ -14,6 +14,7 @@ import '../services/ai_coach_service.dart';
 import '../services/notification_service.dart';
 import '../services/run_history_service.dart';
 import '../services/auth_service.dart';
+import '../services/event_service.dart';
 import 'ai_coach_screen.dart';
 import 'run_summary_screen.dart';
 import '../theme/duo_theme.dart';
@@ -476,6 +477,371 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     );
   }
 
+
+  Widget _buildStatItem(DuoColorPalette palette, String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 13)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(color: palette.textMuted, fontSize: 10, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildStatDivider(DuoColorPalette palette) {
+    return Container(width: 1, height: 20, color: palette.surfaceBorder);
+  }
+
+  Future<void> _showAiEventRecommendationSheet(DuoColorPalette palette) async {
+    final location = Provider.of<LocationTrackingService>(context, listen: false);
+
+    // Dapatkan daftar event lomba
+    List<RaceEvent> events = [];
+    try {
+      events = Provider.of<EventService>(context, listen: false).events;
+    } catch (_) {}
+    if (events.isEmpty) {
+      events = RaceEvent.sampleEvents();
+    }
+
+    // Dapatkan data statistik kompetisi user
+    final userStats = await RunHistoryService().computeStats();
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: palette.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: palette.surfaceBorder, width: 2),
+      ),
+      builder: (ctx) {
+        return FutureBuilder<AiEventRecommendationResult>(
+          future: widget.aiCoachService.recommendNextEvents(
+            userStats: userStats,
+            currentDistanceKm: location.totalDistanceKm,
+            avgSpeedKmh: location.currentSpeedKmh,
+            durationSeconds: location.elapsed.inSeconds,
+            availableEvents: events,
+          ),
+          builder: (context, snapshot) {
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: palette.surfaceBorder,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: DuoColors.streakGold.withOpacity(palette.isDark ? 0.2 : 0.12),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: DuoColors.streakGold, width: 1.5),
+                          ),
+                          child: const Icon(Icons.auto_awesome_rounded, color: DuoColors.streakGold, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'REKOMENDASI EVENT AI',
+                                style: TextStyle(
+                                  color: palette.textPrimary,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Dianalisis khusus berdasarkan statistik kompetisimu',
+                                style: TextStyle(color: palette.textSecondary, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (snapshot.hasData)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: (snapshot.data!.source == 'gemini' ? DuoColors.questGreen : DuoColors.streakGold).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: snapshot.data!.source == 'gemini' ? DuoColors.questGreen : DuoColors.streakGold,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.circle,
+                                  size: 8,
+                                  color: snapshot.data!.source == 'gemini' ? DuoColors.questGreen : DuoColors.streakGold,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  snapshot.data!.source == 'gemini' ? 'Gemini Live' : 'Smart Match',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    color: snapshot.data!.source == 'gemini' ? DuoColors.questGreen : DuoColors.streakGold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // User Stats summary chips
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: palette.backgroundAlt,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: palette.surfaceBorder, width: 1.5),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatItem(palette, 'Karier', '${userStats.totalKm.toStringAsFixed(1)} KM'),
+                          _buildStatDivider(palette),
+                          _buildStatItem(palette, 'Lomba', '${userStats.raceCount}x'),
+                          _buildStatDivider(palette),
+                          _buildStatItem(palette, 'Medali', '${userStats.medalCount} NFT'),
+                          _buildStatDivider(palette),
+                          _buildStatItem(palette, 'Lari Ini', '${location.totalDistanceKm.toStringAsFixed(1)} KM'),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 36),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(color: palette.primaryBlue),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Coach Rani & Gemini sedang menganalisis performamu...',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: palette.textSecondary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else if (snapshot.hasError)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: DuoColors.heartRed.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: DuoColors.heartRed, width: 1.5),
+                        ),
+                        child: Text(
+                          'Gagal memuat rekomendasi: ${snapshot.error}',
+                          style: const TextStyle(color: DuoColors.heartRed, fontSize: 12),
+                        ),
+                      )
+                    else if (snapshot.hasData) ...[
+                      // Coach advice bubble
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: palette.primaryBlue.withOpacity(palette.isDark ? 0.15 : 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: palette.primaryBlue.withOpacity(0.4), width: 1.5),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: palette.primaryBlue,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'COACH RANI BERKATA:',
+                                    style: TextStyle(
+                                      color: palette.primaryBlue,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 11,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    snapshot.data!.coachMessage,
+                                    style: TextStyle(
+                                      color: palette.textPrimary,
+                                      fontSize: 13,
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+                      Text(
+                        'LOMBA PILIHAN UNTUKMU',
+                        style: TextStyle(
+                          color: palette.textSecondary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      ...snapshot.data!.recommendations.map((rec) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: palette.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: palette.surfaceBorder, width: 2),
+                            boxShadow: [
+                              BoxShadow(color: palette.surfaceShadow, offset: const Offset(0, 3)),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: DuoColors.streakGold,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${rec.event.distanceKm} KM',
+                                      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 11),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: palette.backgroundAlt,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: palette.surfaceBorder, width: 1),
+                                    ),
+                                    child: Text(
+                                      rec.event.type.toUpperCase(),
+                                      style: TextStyle(color: palette.textMuted, fontWeight: FontWeight.bold, fontSize: 10),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '\$${rec.event.feeUsd.toStringAsFixed(0)} USD',
+                                    style: TextStyle(color: DuoColors.questGreen, fontWeight: FontWeight.w900, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                rec.event.title,
+                                style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 15),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.auto_awesome_rounded, size: 14, color: DuoColors.streakGold),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      rec.reason,
+                                      style: TextStyle(color: palette.textSecondary, fontSize: 12, height: 1.3),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.sports_rounded, size: 14, color: palette.primaryBlue),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Tips: ${rec.readinessAdvice}',
+                                      style: TextStyle(color: palette.textMuted, fontSize: 11, fontStyle: FontStyle.italic),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+
+                    const SizedBox(height: 10),
+                    DuoButton(
+                      text: 'TUTUP REKOMENDASI',
+                      height: 46,
+                      backgroundColor: palette.secondaryButton,
+                      shadowColor: palette.secondaryButtonShadow,
+                      textColor: palette.secondaryButtonText,
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = DuoColors.of(context);
@@ -507,6 +873,11 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
             ),
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.auto_awesome_rounded, color: DuoColors.streakGold),
+              tooltip: 'Rekomendasi Lomba AI',
+              onPressed: () => _showAiEventRecommendationSheet(palette),
+            ),
             IconButton(
               icon: Icon(Icons.smart_toy_rounded, color: palette.primaryBlue),
               tooltip: 'Tanya AI Coach',
@@ -644,6 +1015,45 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
               ),
             ),
           ),
+
+        // Floating AI Event Recommendation chip
+        Positioned(
+          left: 12,
+          bottom: 12,
+          child: GestureDetector(
+            onTap: () => _showAiEventRecommendationSheet(palette),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: palette.surfaceBorder, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: palette.surfaceShadow,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.auto_awesome_rounded, color: DuoColors.streakGold, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'REKOMENDASI AI',
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
 
         if (!_followUser)
           Positioned(

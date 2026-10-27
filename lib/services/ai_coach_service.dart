@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../models/race_event.dart';
+import 'run_history_service.dart';
 
 class AiMessage {
   final String sender; // 'user' or 'ai'
@@ -8,6 +10,31 @@ class AiMessage {
   final DateTime timestamp;
 
   AiMessage({required this.sender, required this.text, required this.timestamp});
+}
+
+
+class AiEventRecommendation {
+  final RaceEvent event;
+  final String reason;
+  final String readinessAdvice;
+
+  AiEventRecommendation({
+    required this.event,
+    required this.reason,
+    required this.readinessAdvice,
+  });
+}
+
+class AiEventRecommendationResult {
+  final List<AiEventRecommendation> recommendations;
+  final String coachMessage;
+  final String source; // 'gemini' or 'local'
+
+  AiEventRecommendationResult({
+    required this.recommendations,
+    required this.coachMessage,
+    required this.source,
+  });
 }
 
 class AiCoachService {
@@ -769,4 +796,228 @@ Tanyakan topik spesifik, misalnya pernapasan, interval, pemanasan, recovery, hea
 ''';
     }
   }
+
+  /// Panggilan langsung 1-turn ke Gemini untuk keperluan instruksi khusus (seperti rekomendasi)
+  Future<String?> _callGeminiDirect(String prompt) async {
+    if (apiKey == null || apiKey!.isEmpty) return null;
+
+    final body = jsonEncode({
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [{'text': prompt}],
+        }
+      ],
+      'generationConfig': {
+        'temperature': 0.3,
+        'topP': 0.9,
+        'maxOutputTokens': 1500,
+      },
+    });
+
+    final modelsToTry = [
+      ..._candidateModels,
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ];
+
+    for (final model in modelsToTry) {
+      final url = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent');
+      try {
+        final res = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey!,
+          },
+          body: body,
+        ).timeout(const Duration(seconds: 10));
+
+        if (res.statusCode == 200) {
+          final json = jsonDecode(res.body);
+          final parts = json['candidates']?[0]?['content']?['parts'] as List?;
+          final text = parts
+              ?.where((p) => p['thought'] != true)
+              .map((p) => p['text']?.toString() ?? '')
+              .join()
+              .trim();
+          if (text != null && text.isNotEmpty) {
+            return text;
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  /// Rekomendasi Event Lomba berbasis AI (Gemini API dengan fallback cerdas lokal)
+  Future<AiEventRecommendationResult> recommendNextEvents({
+    required RunStats userStats,
+    required double currentDistanceKm,
+    required double avgSpeedKmh,
+    required int durationSeconds,
+    required List<RaceEvent> availableEvents,
+  }) async {
+    if (availableEvents.isEmpty) {
+      return AiEventRecommendationResult(
+        recommendations: [],
+        coachMessage: 'Belum ada event lomba yang tersedia di kalender kompetisi.',
+        source: 'local',
+      );
+    }
+
+    // Pace (mnt/km)
+    final pace = avgSpeedKmh > 0 ? 60.0 / avgSpeedKmh : 0.0;
+    var paceMin = pace.floor();
+    var paceSec = ((pace - paceMin) * 60).round();
+    if (paceSec == 60) {
+      paceMin += 1;
+      paceSec = 0;
+    }
+    final paceStr = avgSpeedKmh > 0 ? '$paceMin:${paceSec.toString().padLeft(2, '0')}' : '-';
+
+    // 1. Coba panggil Gemini API
+    if (apiKey != null && apiKey!.isNotEmpty) {
+      try {
+        final eventsSummary = availableEvents.map((e) =>
+            '- ID: "${e.id}" | Judul: "${e.title}" | Jarak: ${e.distanceKm} km | Tipe: ${e.type} | Biaya: \$${e.feeUsd}'
+        ).join('\n');
+
+        final prompt = """
+Namamu Coach Rani, pelatih atletik di aplikasi Global Virtual Race.
+Analisislah data statistik kompetisi atlet berikut dan rekomendasikan 1 atau 2 event lomba terbaik dari daftar event yang tersedia.
+
+DATA STATISTIK ATLET:
+- Total Jarak Karier: ${userStats.totalKm.toStringAsFixed(1)} KM
+- Total Lomba Pernah Diikuti: ${userStats.raceCount} event
+- Medali NFT Dikoleksi: ${userStats.medalCount} medali
+- Sesi Lari Saat Ini: ${currentDistanceKm.toStringAsFixed(2)} KM dalam ${(durationSeconds / 60).toStringAsFixed(1)} menit
+- Rata-rata Kecepatan: ${avgSpeedKmh.toStringAsFixed(1)} km/h (Pace: $paceStr/km)
+
+DAFTAR EVENT LOMBA TERSEDIA:
+$eventsSummary
+
+INSTRUKSI FORMAT BALASAN:
+HANYA berikan respons dalam JSON valid (tanpa pembuka/penutup penjelasan lain):
+{
+  "coach_message": "Pesan evaluasi hangat 2-3 kalimat dari Coach Rani mengenai performa atlet dan arahan lomba berikutnya.",
+  "recommendations": [
+    {
+      "event_id": "ID event yang dipilih dari daftar",
+      "reason": "Alasan mengapa lomba ini tepat sesuai jarak dan pace atlet",
+      "readiness_advice": "Tips singkat persiapan fisik atau pacing untuk lomba ini"
+    }
+  ]
+}
+""";
+
+        final rawResponse = await _callGeminiDirect(prompt);
+        if (rawResponse != null && rawResponse.isNotEmpty) {
+          String cleanJson = rawResponse.trim();
+          if (cleanJson.startsWith('```json')) {
+            cleanJson = cleanJson.substring(7);
+          } else if (cleanJson.startsWith('```')) {
+            cleanJson = cleanJson.substring(3);
+          }
+          if (cleanJson.endsWith('```')) {
+            cleanJson = cleanJson.substring(0, cleanJson.length - 3);
+          }
+          cleanJson = cleanJson.trim();
+
+          final decoded = jsonDecode(cleanJson);
+          final coachMsg = decoded['coach_message']?.toString() ??
+              'Berikut rekomendasi lomba yang cocok dengan statistik kompetisimu!';
+          final recsList = decoded['recommendations'] as List?;
+          final List<AiEventRecommendation> results = [];
+
+          if (recsList != null) {
+            for (final item in recsList) {
+              final evId = item['event_id']?.toString() ?? '';
+              final foundEv = availableEvents.firstWhere(
+                (e) => e.id == evId,
+                orElse: () => availableEvents.first,
+              );
+              results.add(AiEventRecommendation(
+                event: foundEv,
+                reason: item['reason']?.toString() ??
+                    'Lomba ini cocok untuk meningkatkan rekor jarak dan kecepatanmu.',
+                readinessAdvice: item['readiness_advice']?.toString() ??
+                    'Pertahankan konsistensi latihan dan hidrasi optimal.',
+              ));
+            }
+          }
+
+          if (results.isNotEmpty) {
+            return AiEventRecommendationResult(
+              recommendations: results,
+              coachMessage: coachMsg,
+              source: 'gemini',
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('[AI Coach] Gemini recommendation fallback: $e');
+      }
+    }
+
+    // 2. Fallback Lokal Cerdas
+    return _localEventRecommendation(
+      userStats: userStats,
+      currentDistanceKm: currentDistanceKm,
+      avgSpeedKmh: avgSpeedKmh,
+      durationSeconds: durationSeconds,
+      paceStr: paceStr,
+      availableEvents: availableEvents,
+    );
+  }
+
+  AiEventRecommendationResult _localEventRecommendation({
+    required RunStats userStats,
+    required double currentDistanceKm,
+    required double avgSpeedKmh,
+    required int durationSeconds,
+    required String paceStr,
+    required List<RaceEvent> availableEvents,
+  }) {
+    double baselineDist = currentDistanceKm > 0
+        ? currentDistanceKm
+        : (userStats.totalKm > 0 ? (userStats.totalKm / (userStats.raceCount > 0 ? userStats.raceCount : 1)) : 5.0);
+
+    // Target progressive overload 30-40%
+    double targetNextDist = baselineDist * 1.35;
+
+    final sorted = List<RaceEvent>.from(availableEvents);
+    sorted.sort((a, b) => (a.distanceKm - targetNextDist).abs().compareTo((b.distanceKm - targetNextDist).abs()));
+
+    final topEvent = sorted.first;
+    List<AiEventRecommendation> recs = [
+      AiEventRecommendation(
+        event: topEvent,
+        reason: 'Dengan total jarak kompetisi ${userStats.totalKm.toStringAsFixed(1)} KM dan pace stabil $paceStr/km, target ${topEvent.distanceKm} KM di "${topEvent.title}" adalah langkah ideal untuk menguji daya tahanmu.',
+        readinessAdvice: 'Lakukan 2 kali sesi easy run dan 1 kali tempo run setiap minggu untuk adaptasi sebelum hari perlombaan.',
+      ),
+    ];
+
+    if (sorted.length > 1) {
+      final secondEvent = sorted[1];
+      recs.add(AiEventRecommendation(
+        event: secondEvent,
+        reason: 'Pilihan tantangan alternatif ${secondEvent.distanceKm} KM untuk mengasah kecepatan kompetisi.',
+        readinessAdvice: 'Fokus pada konsistensi cadence langkah kaki dan strategi nutrisi pre-race.',
+      ));
+    }
+
+    String coachMsg = userStats.medalCount > 0
+        ? 'Performa kompetisimu luar biasa dengan ${userStats.medalCount} medali NFT! Berdasarkan statistik larimu saat ini, Coach Rani menyarankan event berikut untuk jenjang prestasi berikutnya.'
+        : 'Awal yang sangat baik untuk perjalanan atletikmu! Berdasarkan statistik jarak dan kecepatanmu, ini lomba yang paling sesuai untuk mencetak medali NFT pertamamu.';
+
+    return AiEventRecommendationResult(
+      recommendations: recs,
+      coachMessage: coachMsg,
+      source: 'local',
+    );
+  }
+
 }
