@@ -190,7 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? _userProfile!['email']
         : 'email@kompetisi.com';
     // Cast aman: saldo bisa tersimpan sebagai int atau double
-    final walletUsd = ((_userProfile?['wallet'] ?? 250.0) as num).toDouble();
+    final walletUsd = ((_userProfile?['wallet'] ?? 0.0) as num).toDouble();
     final walletFormatted = currencyService.formatCurrency(walletUsd, selectedCurrency);
 
     return Scaffold(

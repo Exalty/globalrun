@@ -43,7 +43,22 @@ class RunHistoryService {
     final recordKey = await _recordKey(record.id);
 
     await prefs.setString(recordKey, jsonEncode(record.toJson()));
-    final ids = prefs.getStringList(indexKey) ?? <String>[];
+    var ids = prefs.getStringList(indexKey) ?? <String>[];
+
+    // Migrasi riwayat dari key lama jika key akun ini masih kosong
+    if (ids.isEmpty) {
+      final oldIds = prefs.getStringList('run_history_ids');
+      if (oldIds != null && oldIds.isNotEmpty) {
+        ids = List<String>.from(oldIds);
+        await prefs.setStringList(indexKey, ids);
+        for (final oldId in oldIds) {
+          final oldRaw = prefs.getString('run_record_$oldId');
+          if (oldRaw != null) {
+            await prefs.setString(await _recordKey(oldId), oldRaw);
+          }
+        }
+      }
+    }
     if (!ids.contains(record.id)) ids.insert(0, record.id);
     await prefs.setStringList(indexKey, ids);
 
@@ -72,7 +87,22 @@ class RunHistoryService {
   Future<List<RunRecord>> loadAll() async {
     final prefs = await SharedPreferences.getInstance();
     final indexKey = await _indexKey();
-    final ids = prefs.getStringList(indexKey) ?? <String>[];
+    var ids = prefs.getStringList(indexKey) ?? <String>[];
+
+    // Migrasi riwayat dari key lama jika key akun ini masih kosong
+    if (ids.isEmpty) {
+      final oldIds = prefs.getStringList('run_history_ids');
+      if (oldIds != null && oldIds.isNotEmpty) {
+        ids = List<String>.from(oldIds);
+        await prefs.setStringList(indexKey, ids);
+        for (final oldId in oldIds) {
+          final oldRaw = prefs.getString('run_record_$oldId');
+          if (oldRaw != null) {
+            await prefs.setString(await _recordKey(oldId), oldRaw);
+          }
+        }
+      }
+    }
     final out = <RunRecord>[];
 
     for (final id in ids) {
@@ -178,7 +208,22 @@ class RunHistoryService {
     final recordKey = await _recordKey(id);
     final indexKey = await _indexKey();
     await prefs.remove(recordKey);
-    final ids = prefs.getStringList(indexKey) ?? <String>[];
+    var ids = prefs.getStringList(indexKey) ?? <String>[];
+
+    // Migrasi riwayat dari key lama jika key akun ini masih kosong
+    if (ids.isEmpty) {
+      final oldIds = prefs.getStringList('run_history_ids');
+      if (oldIds != null && oldIds.isNotEmpty) {
+        ids = List<String>.from(oldIds);
+        await prefs.setStringList(indexKey, ids);
+        for (final oldId in oldIds) {
+          final oldRaw = prefs.getString('run_record_$oldId');
+          if (oldRaw != null) {
+            await prefs.setString(await _recordKey(oldId), oldRaw);
+          }
+        }
+      }
+    }
     ids.remove(id);
     await prefs.setStringList(indexKey, ids);
   }

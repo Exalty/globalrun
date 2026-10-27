@@ -136,7 +136,7 @@ class AuthService {
             'id': res.user!.id,
             'full_name': cleanName,
             'email': cleanEmail,
-            'wallet_usd': 250.0,
+            'wallet_usd': 0.0,
           });
           await prefs.setString(_keyUserId, res.user!.id);
         } catch (_) {}
@@ -153,7 +153,7 @@ class AuthService {
     await prefs.setString(_keyUserEmail, cleanEmail);
     await prefs.setString(_keyPasswordHash, hashPassword(password));
     await prefs.setBool(_keyIsLoggedIn, true);
-    await prefs.setDouble(_keyUserWallet, 250.0);
+    await prefs.setDouble(_keyUserWallet, 0.0);
 
     return {
       'success': true,
@@ -218,7 +218,7 @@ class AuthService {
         try {
           final profileData = await client.from('profiles').select().eq('id', res.user!.id).maybeSingle();
           if (profileData != null) {
-            final wallet = (profileData['wallet_usd'] as num?)?.toDouble() ?? 250.0;
+            final wallet = (profileData['wallet_usd'] as num?)?.toDouble() ?? 0.0;
             await prefs.setDouble(_keyUserWallet, wallet);
             if (profileData['full_name'] != null && (profileData['full_name'] as String).isNotEmpty) {
               name = profileData['full_name'];
@@ -367,7 +367,7 @@ class AuthService {
   // Ambil Data Profil Pengguna (Sinkron Cloud & Cache Lokal)
   Future<Map<String, dynamic>> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    double wallet = prefs.getDouble(_keyUserWallet) ?? 250.0;
+    double wallet = prefs.getDouble(_keyUserWallet) ?? 0.0;
     String name = prefs.getString(_keyUserName) ?? '';
 
     // Tarik saldo & profil terbaru dari Supabase jika online
@@ -402,12 +402,12 @@ class AuthService {
 
   Future<double> getWalletUsd() async {
     final profile = await getUserProfile();
-    return (profile['wallet'] as num?)?.toDouble() ?? 250.0;
+    return (profile['wallet'] as num?)?.toDouble() ?? 0.0;
   }
 
   Future<void> addToWallet(double usd) async {
     final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getDouble(_keyUserWallet) ?? 250.0;
+    final current = prefs.getDouble(_keyUserWallet) ?? 0.0;
     final updated = _round4(current + usd);
     await prefs.setDouble(_keyUserWallet, updated);
     await _syncWalletToCloud(updated);
@@ -416,7 +416,7 @@ class AuthService {
   /// false jika saldo tidak cukup (saldo tidak berubah).
   Future<bool> deductFromWallet(double usd) async {
     final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getDouble(_keyUserWallet) ?? 250.0;
+    final current = prefs.getDouble(_keyUserWallet) ?? 0.0;
     if (usd <= 0 || current + 0.0001 < usd) return false;
     final updated = _round4(current - usd);
     await prefs.setDouble(_keyUserWallet, updated);
