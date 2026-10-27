@@ -16,6 +16,7 @@ import '../services/run_history_service.dart';
 import '../services/auth_service.dart';
 import 'ai_coach_screen.dart';
 import 'run_summary_screen.dart';
+import '../theme/duo_theme.dart';
 
 /// Untuk demo: lari hasil simulasi boleh mint NFT. Set false di produksi.
 const bool _mintSimulatedRuns = true;
@@ -285,22 +286,22 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     _finishRace(targetReached: true);
   }
 
-  Widget _simChip(String label, bool selected, VoidCallback onTap) {
+  Widget _simChip(DuoColorPalette palette, String label, bool selected, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Colors.cyanAccent : const Color(0xFF0F172A),
+          color: selected ? palette.primaryBlue : palette.background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? Colors.cyanAccent : Colors.white24),
+          border: Border.all(color: selected ? palette.primaryBlue : palette.surfaceBorder, width: 1.5),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.black : Colors.white,
-            fontWeight: FontWeight.bold,
+            color: selected ? Colors.white : palette.textPrimary,
+            fontWeight: FontWeight.w900,
             fontSize: 12,
           ),
         ),
@@ -308,18 +309,18 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     );
   }
 
-  Widget _simInfoRow(String label, String value, {Color? valueColor}) {
+  Widget _simInfoRow(DuoColorPalette palette, String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          Text(label, style: TextStyle(color: palette.textMuted, fontSize: 12, fontWeight: FontWeight.bold)),
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? Colors.white,
-              fontWeight: FontWeight.bold,
+              color: valueColor ?? palette.textPrimary,
+              fontWeight: FontWeight.w900,
               fontSize: 13,
             ),
           ),
@@ -332,11 +333,12 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     const speeds = [1, 5, 10, 30];
     const paces = [240, 300, 360, 450, 540]; // detik per KM
     final targetKm = widget.event.distanceKm.toDouble();
+    final palette = DuoColors.of(context);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: palette.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -353,14 +355,14 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.bolt_rounded, color: Colors.amber, size: 24),
-                      SizedBox(width: 8),
-                      Text('Kontrol Simulasi (Demo)',
+                      const Icon(Icons.bolt_rounded, color: DuoColors.streakGold, size: 24),
+                      const SizedBox(width: 8),
+                      Text('Kontrol Simulasi Lari',
                           style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                              color: palette.textPrimary,
+                              fontWeight: FontWeight.w900,
                               fontSize: 17)),
                     ],
                   ),
@@ -371,21 +373,23 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
+                      color: palette.background,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white12),
+                      border: Border.all(color: palette.surfaceBorder, width: 1.5),
                     ),
                     child: Column(
                       children: [
-                        _simInfoRow('Target', '${widget.event.distanceKm} KM'),
-                        _simInfoRow('Kecepatan rata-rata',
+                        _simInfoRow(palette, 'Target', '${widget.event.distanceKm} KM'),
+                        _simInfoRow(palette, 'Kecepatan rata-rata',
                             '${(3600 / pace).toStringAsFixed(1)} km/h'),
                         _simInfoRow(
+                          palette,
                           'Estimasi total waktu',
                           RunFormat.duration((targetKm * pace).round()),
-                          valueColor: Colors.cyanAccent,
+                          valueColor: palette.primaryBlue,
                         ),
                         _simInfoRow(
+                          palette,
                           'Sisa waktu',
                           RunFormat.duration((remainingKm * pace).round()),
                         ),
@@ -394,11 +398,11 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  const Text('PACE SIMULASI',
+                  Text('PACE SIMULASI',
                       style: TextStyle(
-                          color: Colors.white54,
+                          color: palette.textSecondary,
                           fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           letterSpacing: 0.8)),
                   const SizedBox(height: 8),
                   Wrap(
@@ -406,6 +410,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                     runSpacing: 8,
                     children: paces
                         .map((p) => _simChip(
+                              palette,
                               '${RunFormat.pace(p)} /km',
                               pace == p,
                               () => _location.setSimulationPace(p),
@@ -414,11 +419,11 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  const Text('KECEPATAN WAKTU',
+                  Text('KECEPATAN WAKTU',
                       style: TextStyle(
-                          color: Colors.white54,
+                          color: palette.textSecondary,
                           fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                           letterSpacing: 0.8)),
                   const SizedBox(height: 8),
                   Wrap(
@@ -426,6 +431,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                     runSpacing: 8,
                     children: speeds
                         .map((s) => _simChip(
+                              palette,
                               '${s}x',
                               _location.simSpeed == s,
                               () {
@@ -437,24 +443,17 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _skipToFinish();
-                      },
-                      icon: const Icon(Icons.fast_forward_rounded),
-                      label: const Text('Lompat ke Finish'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
+                  DuoButton(
+                    text: 'LOMPAT KE FINISH',
+                    height: 48,
+                    backgroundColor: DuoColors.streakGold,
+                    shadowColor: DuoColors.streakGoldShadow,
+                    textColor: Colors.black,
+                    icon: const Icon(Icons.fast_forward_rounded, color: Colors.black, size: 20),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _skipToFinish();
+                    },
                   ),
                 ],
               ),
@@ -467,6 +466,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = DuoColors.of(context);
     final sensor = Provider.of<MotionSensorService>(context);
     final location = Provider.of<LocationTrackingService>(context);
     final progressRatio =
@@ -479,14 +479,24 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
         if (!didPop) _confirmStop();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: palette.background,
         appBar: AppBar(
-          title: Text(widget.event.title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          backgroundColor: const Color(0xFF1E293B),
+          iconTheme: IconThemeData(color: palette.textPrimary),
+          backgroundColor: palette.surface,
+          elevation: 0,
+          shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
+          title: Text(
+            widget.event.title.toUpperCase(),
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              fontSize: 18,
+              color: palette.textPrimary,
+            ),
+          ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.smart_toy_rounded, color: Colors.cyanAccent),
+              icon: Icon(Icons.smart_toy_rounded, color: palette.primaryBlue),
               tooltip: 'Tanya AI Coach',
               onPressed: () {
                 Navigator.push(

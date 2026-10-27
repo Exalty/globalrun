@@ -31,8 +31,6 @@ class RunSummaryScreen extends StatelessWidget {
         ? 1
         : splits.map((s) => s.seconds).reduce((a, b) => a > b ? a : b);
 
-    // Medali: pakai blok yang dikirim (lari baru selesai), atau cari di ledger
-    // berdasarkan index yang tersimpan di riwayat (lari lama).
     final Block? medal = block ??
         ((record.blockIndex != null && blockchainService != null)
             ? blockchainService!.blockAt(record.blockIndex!)
@@ -41,7 +39,7 @@ class RunSummaryScreen extends StatelessWidget {
     final palette = DuoColors.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: palette.background,
       appBar: AppBar(
         iconTheme: IconThemeData(color: palette.textPrimary),
         title: Text(
@@ -68,7 +66,7 @@ class RunSummaryScreen extends StatelessWidget {
                   children: [
                     Icon(
                       record.completed ? Icons.emoji_events_rounded : Icons.flag_outlined,
-                      color: record.completed ? Colors.amber : Colors.white54,
+                      color: record.completed ? DuoColors.streakGold : palette.textMuted,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -76,8 +74,8 @@ class RunSummaryScreen extends StatelessWidget {
                         record.completed
                             ? 'Target ${record.targetKm} KM tercapai!'
                             : 'Dihentikan sebelum target (${record.targetKm} KM)',
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                            color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                     ),
                   ],
@@ -85,22 +83,22 @@ class RunSummaryScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   RunFormat.date(record.startedAt) + (record.isSimulated ? '  •  Simulasi' : ''),
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: TextStyle(color: palette.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    _stat('JARAK', '${record.distanceKm.toStringAsFixed(2)} km'),
-                    _stat('WAKTU', RunFormat.duration(record.durationSeconds)),
-                    _stat('PACE', '${RunFormat.pace(record.avgPaceSecPerKm)} /km'),
+                    _stat(palette, 'JARAK', '${record.distanceKm.toStringAsFixed(2)} km'),
+                    _stat(palette, 'WAKTU', RunFormat.duration(record.durationSeconds)),
+                    _stat(palette, 'PACE', '${RunFormat.pace(record.avgPaceSecPerKm)} /km'),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _stat('KECEPATAN', '${record.avgSpeedKmh.toStringAsFixed(1)} km/h'),
-                    _stat('LANGKAH', '${record.steps}'),
-                    _stat('CADENCE',
+                    _stat(palette, 'KECEPATAN', '${record.avgSpeedKmh.toStringAsFixed(1)} km/h'),
+                    _stat(palette, 'LANGKAH', '${record.steps}'),
+                    _stat(palette, 'CADENCE',
                         record.durationSeconds > 0
                             ? '${(record.steps / (record.durationSeconds / 60)).round()} spm'
                             : '-'),
@@ -108,24 +106,30 @@ class RunSummaryScreen extends StatelessWidget {
                 ),
                 if (splits.isNotEmpty) ...[
                   const SizedBox(height: 20),
-                  const Text('SPLIT PER KM',
+                  Text('SPLIT PER KM',
                       style: TextStyle(
-                          color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                          color: palette.primaryBlue, fontWeight: FontWeight.w900, fontSize: 12)),
                   const SizedBox(height: 8),
                   for (final s in splits)
-                    _splitRow(s, fastest, slowest),
+                    _splitRow(palette, s, fastest, slowest),
                 ],
                 if (record.blockHash != null) ...[
                   const SizedBox(height: 16),
                   Text(
                     'Blok #${record.blockIndex}  ${record.blockHash!.substring(0, 24)}...',
-                    style: const TextStyle(
-                        color: Colors.white38, fontSize: 11, fontFamily: 'monospace'),
+                    style: TextStyle(
+                        color: palette.textMuted, fontSize: 11, fontFamily: 'monospace'),
                   ),
                 ],
-                const SizedBox(height: 16),
-                if (medal != null && blockchainService != null)
-                  ElevatedButton.icon(
+                const SizedBox(height: 20),
+                if (medal != null && blockchainService != null) ...[
+                  DuoButton(
+                    text: 'BUKA MEDALI NFT',
+                    height: 48,
+                    backgroundColor: palette.neonCyan,
+                    shadowColor: palette.neonCyanShadow,
+                    textColor: Colors.black,
+                    icon: const Icon(Icons.workspace_premium_rounded, color: Colors.black, size: 20),
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -135,26 +139,16 @@ class RunSummaryScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    icon: const Icon(Icons.workspace_premium_rounded),
-                    label: const Text('Buka Medali NFT'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
                   ),
-                const SizedBox(height: 8),
-                OutlinedButton(
+                  const SizedBox(height: 10),
+                ],
+                DuoButton(
+                  text: 'SELESAI',
+                  height: 48,
+                  backgroundColor: palette.secondaryButton,
+                  shadowColor: palette.secondaryButtonShadow,
+                  textColor: palette.textPrimary,
                   onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Selesai'),
                 ),
               ],
             ),
@@ -218,26 +212,27 @@ class RunSummaryScreen extends StatelessWidget {
     );
   }
 
-  Widget _stat(String label, String value) {
+  Widget _stat(DuoColorPalette palette, String label, String value) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 3),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
+          color: palette.surface,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: palette.surfaceBorder, width: 1.5),
         ),
         child: Column(
           children: [
             Text(label,
-                style: const TextStyle(
-                    color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    color: palette.textMuted, fontSize: 10, fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(value,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: palette.textPrimary, fontSize: 15, fontWeight: FontWeight.w900)),
             ),
           ],
         ),
@@ -245,9 +240,8 @@ class RunSummaryScreen extends StatelessWidget {
     );
   }
 
-  Widget _splitRow(RunSplit s, int fastest, int slowest) {
+  Widget _splitRow(DuoColorPalette palette, RunSplit s, int fastest, int slowest) {
     final range = (slowest - fastest).clamp(1, 1 << 30);
-    // Split tercepat = bar terpanjang
     final ratio = 1.0 - ((s.seconds - fastest) / range) * 0.6;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -256,7 +250,7 @@ class RunSummaryScreen extends StatelessWidget {
           SizedBox(
             width: 34,
             child: Text('${s.km}',
-                style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                style: TextStyle(color: palette.textSecondary, fontWeight: FontWeight.bold)),
           ),
           Expanded(
             child: ClipRRect(
@@ -264,8 +258,8 @@ class RunSummaryScreen extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: ratio.clamp(0.1, 1.0),
                 minHeight: 10,
-                backgroundColor: Colors.white10,
-                valueColor: const AlwaysStoppedAnimation(Colors.cyanAccent),
+                backgroundColor: palette.surfaceBorder,
+                valueColor: AlwaysStoppedAnimation(palette.primaryBlue),
               ),
             ),
           ),
@@ -273,7 +267,7 @@ class RunSummaryScreen extends StatelessWidget {
             width: 64,
             child: Text(RunFormat.pace(s.seconds),
                 textAlign: TextAlign.right,
-                style: const TextStyle(color: Colors.white, fontFamily: 'monospace')),
+                style: TextStyle(color: palette.textPrimary, fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),

@@ -49,25 +49,36 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
   Future<void> _confirmClearLedger() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text('Kosongkan Medali?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Seluruh koleksi medali lokal akun ini akan dikosongkan.',
-          style: TextStyle(color: Colors.white70),
-        ),
+      builder: (ctx) {
+        final p = DuoColors.of(ctx);
+        return AlertDialog(
+          backgroundColor: p.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: p.surfaceBorder, width: 2),
+          ),
+          title: Text('Kosongkan Medali?', style: TextStyle(color: p.textPrimary, fontWeight: FontWeight.w900)),
+          content: Text(
+            'Seluruh koleksi medali lokal akun ini akan dikosongkan.',
+            style: TextStyle(color: p.textSecondary, fontSize: 13),
+          ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal', style: TextStyle(color: Colors.white60)),
+            child: Text('Batal', style: TextStyle(color: p.textMuted, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DuoColors.heartRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Kosongkan', style: TextStyle(color: Colors.white)),
+            child: const Text('Kosongkan', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
-      ),
+      );
+    },
     );
     if (ok == true) {
       await widget.blockchainService.clearLedger();
@@ -96,12 +107,16 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
   }
 
   void _showBlockDetail(Block block) {
+    final palette = DuoColors.of(context);
     final tierColor = _tierColor(block.tier);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: palette.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        side: BorderSide(color: palette.surfaceBorder, width: 2),
+      ),
       builder: (context) {
         return SafeArea(
           child: SingleChildScrollView(
@@ -112,65 +127,64 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.verified_rounded, color: Colors.cyanAccent, size: 28),
+                    Icon(Icons.verified_rounded, color: palette.primaryBlue, size: 28),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         block.isGenesis
                             ? 'Genesis Block #0'
                             : 'Blok #${block.index} Verified NFT Certificate',
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
+                        style: TextStyle(
+                            color: palette.textPrimary, fontWeight: FontWeight.w900, fontSize: 17),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 if (!block.isGenesis) ...[
-                  _buildInfoRow('Token ID', block.tokenId),
-                  _buildInfoRow('Tier Medali', block.tier, valueColor: tierColor),
+                  _buildInfoRow(palette, 'Token ID', block.tokenId),
+                  _buildInfoRow(palette, 'Tier Medali', block.tier, valueColor: tierColor),
                 ],
-                _buildInfoRow('Participant', block.participantName),
-                _buildInfoRow('Event', block.raceTitle),
-                _buildInfoRow('Distance', '${block.distanceKm.toStringAsFixed(2)} km'),
-                _buildInfoRow('Steps Count', '${block.stepsCount} langkah (Pedometer verified)'),
-                _buildInfoRow('Duration', '${(block.durationSeconds / 60).toStringAsFixed(1)} menit'),
-                _buildInfoRow('Avg Speed', '${block.avgSpeedKmh.toStringAsFixed(1)} km/h'),
-                _buildInfoRow('Minted At', block.timestamp.replaceFirst('T', ' ').split('.').first),
-                const Divider(color: Colors.white24, height: 20),
-                const Text('Cryptographic SHA-256 Hash:',
-                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+                _buildInfoRow(palette, 'Participant', block.participantName),
+                _buildInfoRow(palette, 'Event', block.raceTitle),
+                _buildInfoRow(palette, 'Distance', '${block.distanceKm.toStringAsFixed(2)} km'),
+                _buildInfoRow(palette, 'Steps Count', '${block.stepsCount} langkah (Pedometer verified)'),
+                _buildInfoRow(palette, 'Duration', '${(block.durationSeconds / 60).toStringAsFixed(1)} menit'),
+                _buildInfoRow(palette, 'Avg Speed', '${block.avgSpeedKmh.toStringAsFixed(1)} km/h'),
+                _buildInfoRow(palette, 'Minted At', block.timestamp.replaceFirst('T', ' ').split('.').first),
+                Divider(color: palette.surfaceBorder, height: 24),
+                Text('Cryptographic SHA-256 Hash:',
+                    style: TextStyle(color: palette.textMuted, fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
                 SelectableText(
                   block.hash,
-                  style: const TextStyle(
-                      color: Colors.cyanAccent, fontFamily: 'monospace', fontSize: 12),
+                  style: TextStyle(
+                      color: palette.primaryBlue, fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                const Text('Previous Block Hash:',
-                    style: TextStyle(color: Colors.white54, fontSize: 12)),
+                const SizedBox(height: 12),
+                Text('Previous Block Hash:',
+                    style: TextStyle(color: palette.textMuted, fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
                 SelectableText(
                   block.previousHash,
-                  style: const TextStyle(
-                      color: Colors.white70, fontFamily: 'monospace', fontSize: 12),
+                  style: TextStyle(
+                      color: palette.textSecondary, fontFamily: 'monospace', fontSize: 12),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: block.hash));
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Hash medali berhasil disalin ke clipboard!')),
-                      );
-                    },
-                    icon: const Icon(Icons.copy_rounded, size: 18),
-                    label: const Text('Salin Hash Sertifikat'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent,
-                      foregroundColor: Colors.black,
-                    ),
-                  ),
+                const SizedBox(height: 20),
+                DuoButton(
+                  text: 'SALIN HASH SERTIFIKAT',
+                  height: 48,
+                  backgroundColor: palette.primaryBlue,
+                  shadowColor: palette.primaryBlueShadow,
+                  textColor: Colors.white,
+                  icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 18),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: block.hash));
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Hash medali berhasil disalin ke clipboard!')),
+                    );
+                  },
                 ),
               ],
             ),
@@ -180,7 +194,7 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
+  Widget _buildInfoRow(DuoColorPalette palette, String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -333,21 +347,24 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
             if (medalCount == 0)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(24),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
+                  color: palette.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white12),
+                  border: Border.all(color: palette.surfaceBorder, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(color: palette.surfaceShadow, offset: const Offset(0, 3)),
+                  ],
                 ),
-                child: const Column(
+                child: Column(
                   children: [
-                    Icon(Icons.military_tech_outlined, color: Colors.white38, size: 40),
-                    SizedBox(height: 8),
+                    Icon(Icons.military_tech_outlined, color: palette.textMuted, size: 44),
+                    const SizedBox(height: 10),
                     Text(
                       'Belum ada medali. Selesaikan sebuah race untuk mencetak medali NFT pertamamu.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white60, fontSize: 13),
+                      style: TextStyle(color: palette.textSecondary, fontSize: 13, fontWeight: FontWeight.bold, height: 1.4),
                     ),
                   ],
                 ),
@@ -380,7 +397,7 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
+                      color: palette.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isBroken
