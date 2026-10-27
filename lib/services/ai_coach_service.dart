@@ -816,10 +816,9 @@ Tanyakan topik spesifik, misalnya pernapasan, interval, pemanasan, recovery, hea
     });
 
     final modelsToTry = [
-      ..._candidateModels,
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
+      'gemini-3.5-flash',
+      'gemini-3.8-flash',
+      'gemini-flash-latest',
     ];
 
     for (final model in modelsToTry) {
@@ -833,7 +832,7 @@ Tanyakan topik spesifik, misalnya pernapasan, interval, pemanasan, recovery, hea
             'x-goog-api-key': apiKey!,
           },
           body: body,
-        ).timeout(const Duration(seconds: 10));
+        ).timeout(const Duration(seconds: 7));
 
         if (res.statusCode == 200) {
           final json = jsonDecode(res.body);
@@ -859,6 +858,7 @@ Tanyakan topik spesifik, misalnya pernapasan, interval, pemanasan, recovery, hea
     required double avgSpeedKmh,
     required int durationSeconds,
     required List<RaceEvent> availableEvents,
+    double longestRunKm = 0.0,
   }) async {
     if (availableEvents.isEmpty) {
       return AiEventRecommendationResult(
@@ -886,11 +886,12 @@ Tanyakan topik spesifik, misalnya pernapasan, interval, pemanasan, recovery, hea
         ).join('\n');
 
         final prompt = """
-Namamu Coach Rani, pelatih atletik di aplikasi Global Virtual Race.
+Namamu Coach Rani, pelatih atletik profesional di aplikasi Global Virtual Race.
 Analisislah data statistik kompetisi atlet berikut dan rekomendasikan 1 atau 2 event lomba terbaik dari daftar event yang tersedia.
 
 DATA STATISTIK ATLET:
-- Total Jarak Karier: ${userStats.totalKm.toStringAsFixed(1)} KM
+- Total Jarak Karier Akumulasi: ${userStats.totalKm.toStringAsFixed(1)} KM
+- Jarak Terjauh Pernah Diselesaikan: ${longestRunKm > 0 ? '${longestRunKm.toStringAsFixed(1)} KM' : 'Belum tercatat'}
 - Total Lomba Pernah Diikuti: ${userStats.raceCount} event
 - Medali NFT Dikoleksi: ${userStats.medalCount} medali
 - Sesi Lari Saat Ini: ${currentDistanceKm.toStringAsFixed(2)} KM dalam ${(durationSeconds / 60).toStringAsFixed(1)} menit
@@ -899,15 +900,20 @@ DATA STATISTIK ATLET:
 DAFTAR EVENT LOMBA TERSEDIA:
 $eventsSummary
 
+ATURAN REKOMENDASI (SANGAT PENTING):
+1. Perhatikan total jarak karier atlet (${userStats.totalKm.toStringAsFixed(1)} KM). Karena atlet sudah menempuh total akumulasi ${userStats.totalKm.toStringAsFixed(1)} KM (sudah di atas 20 KM), JANGAN merekomendasikan lomba pemula 5 KM!
+2. Atlet harus direkomendasikan lomba jenjang berikutnya yaitu 10 KM (seperti Borobudur Virtual 10K) atau Half Marathon 21.1 KM (seperti Maybank Marathon Bali 21.1K) sebagai tantangan naik kelas (progressive overload).
+3. Berikan pesan evaluasi yang menyebutkan pencapaian jarak karier ${userStats.totalKm.toStringAsFixed(1)} KM atlet secara bangga.
+
 INSTRUKSI FORMAT BALASAN:
 HANYA berikan respons dalam JSON valid (tanpa pembuka/penutup penjelasan lain):
 {
-  "coach_message": "Pesan evaluasi hangat 2-3 kalimat dari Coach Rani mengenai performa atlet dan arahan lomba berikutnya.",
+  "coach_message": "Pesan evaluasi hangat 2-3 kalimat dari Coach Rani.",
   "recommendations": [
     {
       "event_id": "ID event yang dipilih dari daftar",
       "reason": "Alasan mengapa lomba ini tepat sesuai jarak dan pace atlet",
-      "readiness_advice": "Tips singkat persiapan fisik atau pacing untuk lomba ini"
+      "readiness_advice": "Tips persiapan fisik atau pacing untuk lomba ini"
     }
   ]
 }
@@ -970,6 +976,7 @@ HANYA berikan respons dalam JSON valid (tanpa pembuka/penutup penjelasan lain):
       durationSeconds: durationSeconds,
       paceStr: paceStr,
       availableEvents: availableEvents,
+      longestRunKm: longestRunKm,
     );
   }
 
@@ -980,23 +987,38 @@ HANYA berikan respons dalam JSON valid (tanpa pembuka/penutup penjelasan lain):
     required int durationSeconds,
     required String paceStr,
     required List<RaceEvent> availableEvents,
+    double longestRunKm = 0.0,
   }) {
-    double baselineDist = currentDistanceKm > 0
-        ? currentDistanceKm
-        : (userStats.totalKm > 0 ? (userStats.totalKm / (userStats.raceCount > 0 ? userStats.raceCount : 1)) : 5.0);
+    // Tentukan target jarak berikutnya berdasarkan kapabilitas akumulasi atlet:
+    double targetNextDist;
+    if (userStats.totalKm >= 50.0 || longestRunKm >= 21.0) {
+      targetNextDist = 42.2; // Full Marathon
+    } else if (userStats.totalKm >= 25.0 || longestRunKm >= 10.0) {
+      targetNextDist = 21.1; // Half Marathon (cocok untuk 29 KM total jarak!)
+    } else if (userStats.totalKm >= 10.0 || longestRunKm >= 5.0) {
+      targetNextDist = 10.0; // 10K
+    } else {
+      targetNextDist = 5.0; // 5K untuk pelari pemula murni (< 10 KM)
+    }
 
-    // Target progressive overload 30-40%
-    double targetNextDist = baselineDist * 1.35;
+    // Jika atlet sudah mengumpulkan jarak >= 20 KM, filter keluar lomba < 10 KM
+    var candidateEvents = availableEvents;
+    if (userStats.totalKm >= 20.0) {
+      final progressiveEvents = availableEvents.where((e) => e.distanceKm >= 10.0).toList();
+      if (progressiveEvents.isNotEmpty) {
+        candidateEvents = progressiveEvents;
+      }
+    }
 
-    final sorted = List<RaceEvent>.from(availableEvents);
+    final sorted = List<RaceEvent>.from(candidateEvents);
     sorted.sort((a, b) => (a.distanceKm - targetNextDist).abs().compareTo((b.distanceKm - targetNextDist).abs()));
 
     final topEvent = sorted.first;
     List<AiEventRecommendation> recs = [
       AiEventRecommendation(
         event: topEvent,
-        reason: 'Dengan total jarak kompetisi ${userStats.totalKm.toStringAsFixed(1)} KM dan pace stabil $paceStr/km, target ${topEvent.distanceKm} KM di "${topEvent.title}" adalah langkah ideal untuk menguji daya tahanmu.',
-        readinessAdvice: 'Lakukan 2 kali sesi easy run dan 1 kali tempo run setiap minggu untuk adaptasi sebelum hari perlombaan.',
+        reason: 'Dengan total akumulasi lari karier ${userStats.totalKm.toStringAsFixed(1)} KM dan ${userStats.medalCount} medali NFT, level kebugaranmu sudah siap untuk naik kelas ke tantangan ${topEvent.distanceKm} KM di "${topEvent.title}".',
+        readinessAdvice: 'Tingkatkan porsi long run mingguan dan jaga asupan hidrasi elektrolit untuk adaptasi jarak baru.',
       ),
     ];
 
@@ -1004,14 +1026,14 @@ HANYA berikan respons dalam JSON valid (tanpa pembuka/penutup penjelasan lain):
       final secondEvent = sorted[1];
       recs.add(AiEventRecommendation(
         event: secondEvent,
-        reason: 'Pilihan tantangan alternatif ${secondEvent.distanceKm} KM untuk mengasah kecepatan kompetisi.',
+        reason: 'Pilihan tantangan berikutnya ${secondEvent.distanceKm} KM di "${secondEvent.title}" untuk mengasah kecepatan kompetisi.',
         readinessAdvice: 'Fokus pada konsistensi cadence langkah kaki dan strategi nutrisi pre-race.',
       ));
     }
 
-    String coachMsg = userStats.medalCount > 0
-        ? 'Performa kompetisimu luar biasa dengan ${userStats.medalCount} medali NFT! Berdasarkan statistik larimu saat ini, Coach Rani menyarankan event berikut untuk jenjang prestasi berikutnya.'
-        : 'Awal yang sangat baik untuk perjalanan atletikmu! Berdasarkan statistik jarak dan kecepatanmu, ini lomba yang paling sesuai untuk mencetak medali NFT pertamamu.';
+    String coachMsg = userStats.totalKm >= 25.0
+        ? 'Luar biasa! Akumulasi jarak kompetisimu sudah mencapai ${userStats.totalKm.toStringAsFixed(1)} KM. Kamu sudah jauh melampaui level 5K pemula! Coach Rani merekomendasikan lomba ${topEvent.distanceKm} KM sebagai langkah naik kelas berikutnya.'
+        : 'Performa kompetisimu berkembang pesat! Berdasarkan catatan statistikmu, ini event lomba yang paling tepat untuk mengasah potensimu.';
 
     return AiEventRecommendationResult(
       recommendations: recs,

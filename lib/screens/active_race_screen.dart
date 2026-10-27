@@ -506,6 +506,13 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
 
     // Dapatkan data statistik kompetisi user
     final userStats = await RunHistoryService().computeStats();
+    final history = await RunHistoryService().loadAll();
+    double longestRunKm = 0.0;
+    for (final r in history) {
+      if (r.distanceKm > longestRunKm) {
+        longestRunKm = r.distanceKm;
+      }
+    }
 
     if (!mounted) return;
 
@@ -525,6 +532,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
             avgSpeedKmh: location.currentSpeedKmh,
             durationSeconds: location.elapsed.inSeconds,
             availableEvents: events,
+            longestRunKm: longestRunKm,
           ),
           builder: (context, snapshot) {
             return SafeArea(
