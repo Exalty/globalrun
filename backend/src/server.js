@@ -52,10 +52,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Start Server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Global Virtual Race REST API Server running on port ${PORT}`);
-  console.log(`📡 Local URL: http://localhost:${PORT}`);
-  console.log(`🛡️  Auth: Bcrypt hashing + JWT token enabled`);
-  console.log(`🐘 Database: PostgreSQL (globalrun_db) connected`);
-});
+// Start Server (jika bukan environment Vercel serverless)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Global Virtual Race REST API Server running on port ${PORT}`);
+    console.log(`📡 Local URL: http://localhost:${PORT}`);
+    console.log(`🛡️  Auth: Bcrypt hashing + JWT token enabled`);
+    console.log(`🐘 Database: PostgreSQL (globalrun_db) connected`);
+  });
+}
+
+module.exports = app;
