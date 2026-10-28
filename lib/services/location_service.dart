@@ -6,6 +6,15 @@ import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+enum GpsErrorType {
+  none,
+  serviceDisabled,
+  permissionDenied,
+  permissionDeniedForever,
+  noFix,
+  streamError,
+}
+
 class TrackPoint {
   final LatLng position;
   final int elapsedMs; // waktu bergerak (tanpa pause)
@@ -13,6 +22,8 @@ class TrackPoint {
 }
 
 class LocationTrackingService extends ChangeNotifier {
+  GpsErrorType _errorType = GpsErrorType.none;
+  GpsErrorType get errorType => _errorType;
   // ── MODE TES GPS ──────────────────────────────────────────────────────
   // true  = pengaturan GPS polos (tanpa foreground service, pakai chip GPS
   //         langsung). Dipakai untuk mencari penyebab fix tidak masuk.
@@ -83,6 +94,7 @@ class LocationTrackingService extends ChangeNotifier {
   UnmodifiableListView<LatLng> get routePoints => UnmodifiableListView(_routePoints);
   UnmodifiableListView<TrackPoint> get trackPoints => UnmodifiableListView(_track);
   double get totalDistanceKm => _totalDistanceMeters / 1000.0;
+  double get totalDistanceMeters => _totalDistanceMeters;
   double get currentSpeedKmh => _currentSpeedKmh;
   LatLng get currentLocation =>
       _currentLocation ?? const LatLng(-6.2088, 106.8456); // default Monas
@@ -118,7 +130,8 @@ class LocationTrackingService extends ChangeNotifier {
       final serviceOn = await Geolocator.isLocationServiceEnabled();
       debugPrint('GPS service enabled = $serviceOn');
       if (!serviceOn) {
-        _onUnavailable('GPS perangkat mati. Aktifkan layanan lokasi.');
+        _errorType = GpsErrorType.serviceDisabled;
+        _onUnavailable('GPS mati. Ketuk untuk aktifkan.');
         return;
       }
 
@@ -127,9 +140,14 @@ class LocationTrackingService extends ChangeNotifier {
         permission = await Geolocator.requestPermission();
       }
       debugPrint('GPS permission = $permission');
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        _onUnavailable('Izin lokasi ditolak. Aktifkan di pengaturan aplikasi.');
+      if (permission == LocationPermission.deniedForever) {
+        _errorType = GpsErrorType.permissionDeniedForever;
+        _onUnavailable('Izin lokasi ditolak permanen. Ketuk untuk buka Pengaturan.');
+        return;
+      }
+      if (permission == LocationPermission.denied) {
+        _errorType = GpsErrorType.permissionDenied;
+        _onUnavailable('Izin lokasi ditolak. Ketuk untuk beri izin.');
         return;
       }
 
@@ -148,7 +166,8 @@ class LocationTrackingService extends ChangeNotifier {
         _onPosition,
         onError: (err) {
           debugPrint('GPS STREAM ERROR: $err');
-          _onUnavailable('Error GPS: $err');
+          _errorType = GpsErrorType.streamError;
+          _onUnavailable('Error sinyal GPS: $err');
         },
       );
 
@@ -157,17 +176,29 @@ class LocationTrackingService extends ChangeNotifier {
       _noFixTimer = Timer(_noFixTimeout, () {
         if (_isTracking && !_isSimulating && _fixCount == 0) {
           debugPrint('GPS: belum ada fix setelah ${_noFixTimeout.inSeconds} detik');
+          _errorType = GpsErrorType.noFix;
           _statusMessage =
-              'Belum ada sinyal GPS. Keluar ke area terbuka & cek izin lokasi.';
+              'Mencari satelit... Ke area terbuka jika lama.';
           notifyListeners();
         }
       });
     } catch (e) {
       debugPrint('GPS start gagal: $e');
+      _errorType = GpsErrorType.streamError;
       _onUnavailable('Gagal memulai GPS: $e');
       return;
     }
     notifyListeners();
+  }
+
+  /// Coba ulang koneksi GPS saat user mengetuk chip atau mengaktifkan setting
+  Future<void> retryGps() async {
+    _positionStream?.cancel();
+    _positionStream = null;
+    _isTracking = false;
+    _statusMessage = null;
+    _errorType = GpsErrorType.none;
+    await startTracking();
   }
 
   void _markStarted() {
@@ -256,14 +287,27 @@ class LocationTrackingService extends ChangeNotifier {
     _fixCount++;
     _noFixTimer?.cancel();
     _statusMessage = null; // fix masuk -> hapus pesan error/peringatan
+    _errorType = GpsErrorType.none;
 
     final p = LatLng(pos.latitude, pos.longitude);
     _currentLocation = p; // untuk tampilan peta
     _gpsAccuracy = pos.accuracy;
 
-    // Tanpa kompas: pakai arah gerak GPS saat bergerak
-    if (!_hasCompass && pos.speed > 0.3 && pos.heading >= 0) {
-      _setHeading(pos.heading, alpha: 0.5);
+    // Tanpa kompas: pakai arah gerak GPS saat bergerak, atau bearing 2 titik koordinat
+    if (!_hasCompass) {
+      if (pos.speed > 0.3 && pos.heading > 0) {
+        _setHeading(pos.heading, alpha: 0.5);
+      } else if (_lastAccepted != null) {
+        final bearing = Geolocator.bearingBetween(
+          _lastAccepted!.position.latitude,
+          _lastAccepted!.position.longitude,
+          pos.latitude,
+          pos.longitude,
+        );
+        if (bearing != 0.0) {
+          _setHeading((bearing + 360) % 360, alpha: 0.5);
+        }
+      }
     }
 
     // Fix kurang akurat tidak dimasukkan ke rute/jarak

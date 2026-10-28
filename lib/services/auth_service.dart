@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,20 @@ import 'package:local_auth/local_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+
+class BiometricAuthResult {
+  final bool success;
+  final String? errorMessage;
+  final bool notEnrolled;
+  final bool lockedOut;
+
+  const BiometricAuthResult({
+    required this.success,
+    this.errorMessage,
+    this.notEnrolled = false,
+    this.lockedOut = false,
+  });
+}
 
 class AuthService {
   static const String _keyIsLoggedIn = 'is_logged_in';
@@ -24,13 +39,17 @@ class AuthService {
 
   // Base URL backend Node.js REST API (Database Lokal PostgreSQL)
   static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.110.5:5000';
+  static String get cloudTunnelUrl =>
+      dotenv.env['PUBLIC_TUNNEL_URL'] ??
+      'https://success-coordination-metallic-cleaner.trycloudflare.com';
   static const String emulatorUrl = 'http://10.0.2.2:5000';
   static const String localhostUrl = 'http://localhost:5000';
   static const String loopbackUrl = 'http://127.0.0.1:5000';
 
   static Set<String> get localCandidates => {
-        localhostUrl,
+        cloudTunnelUrl,
         loopbackUrl,
+        localhostUrl,
         baseUrl,
         emulatorUrl,
       };
@@ -73,16 +92,62 @@ class AuthService {
 
   // Pemicu pemindaian sidik jari
   Future<bool> authenticateWithBiometrics({String? reason}) async {
+    final res = await authenticateWithBiometricsDetail(reason: reason);
+    return res.success;
+  }
+
+  // Pemicu pemindaian sidik jari dengan pesan diagnostik detail
+  Future<BiometricAuthResult> authenticateWithBiometricsDetail({String? reason}) async {
     try {
-      return await _localAuth.authenticate(
+      final available = await canCheckBiometrics();
+      if (!available) {
+        return const BiometricAuthResult(
+          success: false,
+          errorMessage: 'Perangkat ini tidak memiliki sensor biometrik atau belum didukung.',
+        );
+      }
+
+      final authenticated = await _localAuth.authenticate(
         localizedReason: reason ?? 'Pindai sidik jari Anda untuk verifikasi identitas',
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,
         ),
       );
-    } catch (_) {
-      return false;
+
+      if (authenticated) {
+        return const BiometricAuthResult(success: true);
+      } else {
+        return const BiometricAuthResult(
+          success: false,
+          errorMessage: 'Verifikasi sidik jari dibatalkan.',
+        );
+      }
+    } on PlatformException catch (e) {
+      debugPrint('Biometric PlatformException: ${e.code} - ${e.message}');
+      if (e.code == 'NotEnrolled') {
+        return const BiometricAuthResult(
+          success: false,
+          notEnrolled: true,
+          errorMessage: 'Belum ada sidik jari yang didaftarkan di Pengaturan HP Anda.',
+        );
+      } else if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') {
+        return const BiometricAuthResult(
+          success: false,
+          lockedOut: true,
+          errorMessage: 'Sensor sidik jari terkunci sementara karena terlalu banyak percobaan salah. Coba lagi dalam 30 detik.',
+        );
+      } else {
+        return BiometricAuthResult(
+          success: false,
+          errorMessage: 'Sensor sidik jari gagal: ${e.message ?? e.code}',
+        );
+      }
+    } catch (e) {
+      return BiometricAuthResult(
+        success: false,
+        errorMessage: 'Terjadi kendala sensor sidik jari: $e',
+      );
     }
   }
 
@@ -407,24 +472,29 @@ class AuthService {
     return false;
   }
 
-  // Mengatur status Biometrik dari Menu Profil
+  // Mengatur status Biometrik dari Menu Profil (kompatibilitas)
   Future<bool> setBiometricEnabled(bool enable) async {
+    final res = await setBiometricEnabledDetail(enable);
+    return res.success;
+  }
+
+  // Mengatur status Biometrik dengan hasil detail
+  Future<BiometricAuthResult> setBiometricEnabledDetail(bool enable) async {
     final prefs = await SharedPreferences.getInstance();
 
     if (enable) {
-      final authenticated = await authenticateWithBiometrics(
+      final res = await authenticateWithBiometricsDetail(
         reason: 'Pindai sidik jari Anda untuk mengaktifkan login biometrik',
       );
 
-      if (authenticated) {
+      if (res.success) {
         await prefs.setBool(_keyBiometricEnabled, true);
         await prefs.setString('biometric_enrolled_at', DateTime.now().toIso8601String());
-        return true;
       }
-      return false;
+      return res;
     } else {
       await prefs.setBool(_keyBiometricEnabled, false);
-      return true;
+      return const BiometricAuthResult(success: true);
     }
   }
 

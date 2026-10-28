@@ -64,17 +64,37 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white),
               SizedBox(width: 8),
-              Text('Medali berhasil dicetak on-chain di Polygon Amoy!'),
+              Expanded(child: Text('Medali berhasil dicetak on-chain di Polygon Amoy!')),
             ],
           ),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } else {
+      final rawErr = res?['error']?.toString() ?? '';
+      String friendlyMsg = 'Gagal mencetak on-chain.';
+      if (rawErr.toLowerCase().contains('insufficient funds') || rawErr.toLowerCase().contains('gas')) {
+        friendlyMsg = 'Saldo wallet relayer tidak mencukupi untuk gas fee Polygon Amoy.';
+      } else if (rawErr.contains('SocketException') ||
+          rawErr.contains('Connection refused') ||
+          rawErr.contains('tidak dapat dijangkau')) {
+        friendlyMsg = 'Server backend belum terhubung. Pastikan server lokal berjalan.';
+      } else if (rawErr.contains('TimeoutException')) {
+        friendlyMsg = 'Koneksi ke Polygon RPC timeout saat menunggu blok. Coba beberapa saat lagi.';
+      } else if (rawErr.isNotEmpty) {
+        friendlyMsg = 'Gagal: $rawErr';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.heartRed,
-          content: const Text('Gagal mencetak on-chain. Pastikan server backend aktif dan saldo wallet relayer mencukupi.'),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text(friendlyMsg)),
+            ],
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -292,9 +312,31 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                     shadowColor: palette.questGreenShadow,
                     textColor: Colors.white,
                     icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 18),
-                    onPressed: () {
+                    onPressed: () async {
                       if (block.polygonscanUrl != null) {
-                        launchUrl(Uri.parse(block.polygonscanUrl!), mode: LaunchMode.externalApplication);
+                        try {
+                          final uri = Uri.parse(block.polygonscanUrl!);
+                          final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          if (!launched && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: palette.heartRed,
+                                content: const Text('Tidak dapat membuka browser untuk melihat transaksi.'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: palette.heartRed,
+                                content: Text('Gagal membuka Polygonscan: $e'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
                       }
                     },
                   ),

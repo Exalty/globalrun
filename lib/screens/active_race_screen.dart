@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' show pi;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../models/race_event.dart';
@@ -116,6 +117,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
 
   // Peta mengikuti pelari selama mode follow aktif
   void _onLocationChanged() {
+    _sensor.syncWithGpsDistance(_location.totalDistanceMeters);
     if (_followUser && _mapReady && _location.hasFix) {
       _mapController.move(_location.currentLocation, _mapController.camera.zoom);
     }
@@ -1115,42 +1117,70 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     final Color dot;
     if (hasError) {
       text = location.statusMessage!;
-      dot = Colors.redAccent;
+      dot = palette.heartRed;
     } else if (location.isSimulating) {
       text = 'LBS Mock Simulator GPS';
-      dot = Colors.amber;
+      dot = palette.streakGold;
     } else if (!location.hasFix || location.gpsAccuracy == null) {
       // Belum ada fix asli dari stream GPS
       text = 'Mencari sinyal GPS...';
-      dot = Colors.amber;
+      dot = palette.streakGold;
     } else {
       final acc = location.gpsAccuracy!;
       text = 'Live GPS  ±${acc.round()} m · ${location.fixCount} fix';
-      dot = acc <= 15 ? (palette.isDark ? Colors.greenAccent : DuoColors.questGreen) : palette.streakGold;
+      dot = acc <= 15 ? palette.questGreen : palette.streakGold;
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: palette.surface.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: palette.surfaceBorder, width: 1.5),
-        boxShadow: [
-          BoxShadow(color: palette.surfaceShadow, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    color: palette.textPrimary, fontSize: 11, fontWeight: FontWeight.bold)),
+
+    return InkWell(
+      onTap: !hasError
+          ? null
+          : () async {
+              if (location.errorType == GpsErrorType.serviceDisabled) {
+                await Geolocator.openLocationSettings();
+                await Future.delayed(const Duration(milliseconds: 600));
+                location.retryGps();
+              } else if (location.errorType == GpsErrorType.permissionDeniedForever) {
+                await Geolocator.openAppSettings();
+                await Future.delayed(const Duration(milliseconds: 600));
+                location.retryGps();
+              } else {
+                location.retryGps();
+              }
+            },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: palette.surface.withOpacity(0.92),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasError ? palette.heartRed : palette.surfaceBorder,
+            width: 1.5,
           ),
-        ],
+          boxShadow: [
+            BoxShadow(color: palette.surfaceShadow, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: hasError ? palette.heartRed : palette.textPrimary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold)),
+            ),
+            if (hasError) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.touch_app_rounded, color: palette.heartRed, size: 13),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -132,31 +132,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handleToggleBiometric(bool value) async {
+    final palette = DuoColors.of(context);
     if (value) {
-      final success = await _authService.setBiometricEnabled(true);
-      if (success) {
+      final res = await _authService.setBiometricEnabledDetail(true);
+      if (res.success) {
         setState(() => _isBiometricActive = true);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
+            SnackBar(
+              content: const Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, color: DuoColors.questGreen),
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
                   SizedBox(width: 8),
                   Text('Login sidik jari berhasil diaktifkan!'),
                 ],
               ),
+              backgroundColor: palette.questGreen,
               behavior: SnackBarBehavior.floating,
             ),
           );
         }
       } else {
+        setState(() => _isBiometricActive = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Verifikasi sidik jari dibatalkan atau gagal.'),
-              backgroundColor: DuoColors.heartRed,
+            SnackBar(
+              content: Text(res.errorMessage ?? 'Verifikasi sidik jari dibatalkan.'),
+              backgroundColor: palette.heartRed,
               behavior: SnackBarBehavior.floating,
+              action: res.notEnrolled
+                  ? SnackBarAction(
+                      label: 'Buka Pengaturan',
+                      textColor: Colors.white,
+                      onPressed: () => _authService.openDeviceSecuritySettings(),
+                    )
+                  : null,
             ),
           );
         }
@@ -166,8 +176,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _isBiometricActive = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login sidik jari dinonaktifkan.'),
+          SnackBar(
+            content: const Text('Login sidik jari dinonaktifkan.'),
+            backgroundColor: palette.surface,
             behavior: SnackBarBehavior.floating,
           ),
         );

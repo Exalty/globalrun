@@ -52,13 +52,11 @@ class AiCoachService {
   /// Maksimum pasangan percakapan yang disimpan
   static const int _maxHistoryTurns = 20;
 
-  /// Urutan model yang dicoba. Cek daftar model terbaru di dokumentasi
-  /// Gemini API karena nama model bisa berubah.
+  /// Urutan model yang dicoba secara bertingkat
   static const List<String> _candidateModels = [
-    'gemini-3.5-flash-lite',
-    'gemini-3-flash-preview',
-    'gemini-3.5-flash',
-    'gemini-3.8-flash',
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
+    'gemini-pro-latest',
   ];
 
   AiCoachService({this.apiKey});
@@ -169,11 +167,20 @@ BATASAN TOPIK:
 
     // Gemini gagal: pakai template offline, error asli tetap dicatat di log
     final err = lastApiError ?? 'Penyebab tidak diketahui';
-    final shortErr = err.length > 120 ? '${err.substring(0, 120)}...' : err;
+    String friendlyNotice = '*[Mode Offline Coach Rani aktif]*\n\n';
+    if (err.contains('429')) {
+      friendlyNotice = '*[Pemberitahuan: Batas kuota gratis Gemini tercapai (HTTP 429). Menampilkan respons sains olahraga offline Rani:]*\n\n';
+    } else if (err.contains('SocketException') || err.contains('Failed host lookup') || err.contains('Network') || err.contains('TimeoutException')) {
+      friendlyNotice = '*[Pemberitahuan: Koneksi internet offline. Menampilkan respons sains olahraga offline Rani:]*\n\n';
+    } else if (err.contains('400') || err.contains('403')) {
+      friendlyNotice = '*[Pemberitahuan: Kunci API Gemini tidak valid. Menampilkan respons offline Rani:]*\n\n';
+    } else {
+      final shortErr = err.length > 90 ? '${err.substring(0, 90)}...' : err;
+      friendlyNotice = '*[Pemberitahuan: Server Gemini sibuk ($shortErr). Menampilkan respons offline Rani:]*\n\n';
+    }
     return _localFallback(
       query: query,
-      notice: '*[Pemberitahuan: Gagal terhubung ke Gemini ($shortErr). '
-          'Menampilkan jawaban modul offline Rani:]*\n\n',
+      notice: friendlyNotice,
       currentDistanceKm: currentDistanceKm,
       steps: steps,
       avgSpeedKmh: avgSpeedKmh,
@@ -816,9 +823,9 @@ Tanyakan topik spesifik, misalnya pernapasan, interval, pemanasan, recovery, hea
     });
 
     final modelsToTry = [
-      'gemini-3.5-flash',
-      'gemini-3.8-flash',
       'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+      'gemini-pro-latest',
     ];
 
     for (final model in modelsToTry) {

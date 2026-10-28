@@ -258,11 +258,8 @@ class BlockchainService {
 
   /// Mint medali ke Polygon Amoy on-chain via backend relayer gasless
   Future<Map<String, dynamic>?> mintToPolygonOnline(Block block) async {
-    final urlsToTry = [
-      AuthService.baseUrl,
-      AuthService.emulatorUrl,
-      AuthService.localhostUrl,
-    ];
+    final urlsToTry = AuthService.localCandidates;
+    String lastErr = 'Server backend tidak dapat dijangkau';
 
     for (final base in urlsToTry) {
       try {
@@ -280,7 +277,7 @@ class BlockchainService {
             'tier': block.tier,
             'localBlockHash': block.hash,
           }),
-        ).timeout(const Duration(seconds: 15));
+        ).timeout(const Duration(seconds: 25));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -304,13 +301,26 @@ class BlockchainService {
               'txHash': txHash,
               'polygonscanUrl': scanUrl,
             };
+          } else {
+            lastErr = data['message'] ?? 'Respons server tidak valid';
+          }
+        } else {
+          try {
+            final data = jsonDecode(response.body);
+            lastErr = data['message'] ?? 'HTTP ${response.statusCode}';
+          } catch (_) {
+            lastErr = 'HTTP ${response.statusCode}';
           }
         }
       } catch (e) {
+        lastErr = e.toString();
         debugPrint('[BlockchainService] mintToPolygonOnline error on $base: $e');
       }
     }
-    return null;
+    return {
+      'success': false,
+      'error': lastErr,
+    };
   }
 
 }

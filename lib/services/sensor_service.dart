@@ -83,6 +83,22 @@ class MotionSensorService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Smart Cadence Fallback:
+  /// Jika akselerometer perangkat tidak berfungsi/terkunci saat berlari,
+  /// sinkronisasikan langkah secara wajar berdasarkan jarak perpindahan GPS.
+  void syncWithGpsDistance(double totalDistanceMeters) {
+    if (totalDistanceMeters < 30 || _isPaused) return;
+    // Rata-rata pelari menempuh 1 meter dalam ~1.35 langkah (panjang langkah ~0.74m)
+    final expectedSteps = (totalDistanceMeters * 1.35).round();
+    if (_stepCount < (expectedSteps * 0.4).round()) {
+      _stepCount = expectedSteps;
+      if (_motionState == 'Santai / Diam') {
+        _motionState = 'Berlari (GPS Cadence)';
+      }
+      notifyListeners();
+    }
+  }
+
   void pause() {
     _isPaused = true;
     notifyListeners();
