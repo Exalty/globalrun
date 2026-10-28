@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -223,6 +224,11 @@ class AuthService {
             if (profileData['full_name'] != null && (profileData['full_name'] as String).isNotEmpty) {
               name = profileData['full_name'];
             }
+            if (profileData['avatar_url'] != null && (profileData['avatar_url']).toString().isNotEmpty) {
+              final avatar = profileData['avatar_url'].toString();
+              await prefs.setString(_keyUserPhoto, avatar);
+              await prefs.setString('${_keyUserPhoto}_${res.user!.id}', avatar);
+            }
           }
         } catch (_) {}
 
@@ -398,8 +404,9 @@ class AuthService {
             if (uid != null) await prefs.setString('${_keyUserName}_$uid', name);
           }
           if (data['avatar_url'] != null && (data['avatar_url'] as String).isNotEmpty) {
-            if (photo.isEmpty) {
-              photo = data['avatar_url'];
+            final cloudPhoto = data['avatar_url'] as String;
+            if (photo.isEmpty || photo.startsWith('http') || !File(photo).existsSync()) {
+              photo = cloudPhoto;
               await prefs.setString(_keyUserPhoto, photo);
               if (uid != null) await prefs.setString('${_keyUserPhoto}_$uid', photo);
             }
@@ -439,17 +446,58 @@ class AuthService {
     }
 
     if (photoPath != null) {
-      await prefs.setString(_keyUserPhoto, photoPath);
-      if (uid != null) {
-        await prefs.setString('${_keyUserPhoto}_$uid', photoPath);
-      }
-      try {
-        final client = Supabase.instance.client;
-        final user = client.auth.currentUser;
-        if (user != null) {
-          await client.from('profiles').update({'avatar_url': photoPath}).eq('id', user.id);
+      if (photoPath.isEmpty) {
+        await prefs.setString(_keyUserPhoto, '');
+        if (uid != null) {
+          await prefs.setString('${_keyUserPhoto}_$uid', '');
         }
-      } catch (_) {}
+        try {
+          final client = Supabase.instance.client;
+          final user = client.auth.currentUser;
+          if (user != null) {
+            await client.from('profiles').update({'avatar_url': ''}).eq('id', user.id);
+          }
+        } catch (_) {}
+      } else {
+        // Simpan lokal terlebih dahulu agar UI instan
+        await prefs.setString(_keyUserPhoto, photoPath);
+        if (uid != null) {
+          await prefs.setString('${_keyUserPhoto}_$uid', photoPath);
+        }
+
+        // Upload ke Supabase Storage Bucket 'avatars'
+        try {
+          final client = Supabase.instance.client;
+          final user = client.auth.currentUser;
+          if (user != null && !photoPath.startsWith('http')) {
+            final file = File(photoPath);
+            if (await file.exists()) {
+              final ext = photoPath.split('.').last.toLowerCase();
+              final safeExt = (ext == 'png' || ext == 'webp') ? ext : 'jpg';
+              final fileName = '${user.id}_avatar.$safeExt';
+
+              // Upload ke bucket avatars (upsert = true untuk overwrite)
+              await client.storage.from('avatars').upload(
+                fileName,
+                file,
+                fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+              );
+
+              // Ambil Public URL CDN
+              final publicUrl = client.storage.from('avatars').getPublicUrl(fileName);
+              final publicUrlWithTimestamp = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
+              await prefs.setString(_keyUserPhoto, publicUrlWithTimestamp);
+              if (uid != null) {
+                await prefs.setString('${_keyUserPhoto}_$uid', publicUrlWithTimestamp);
+              }
+              await client.from('profiles').update({'avatar_url': publicUrlWithTimestamp}).eq('id', user.id);
+            }
+          }
+        } catch (e) {
+          // Fallback lokal jika upload gagal atau offline
+        }
+      }
     }
   }
 
