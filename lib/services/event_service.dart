@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/race_event.dart';
 
 class EventService extends ChangeNotifier {
@@ -87,6 +88,28 @@ class EventService extends ChangeNotifier {
         }
       } catch (e) {
         // Continue to try next URL
+      }
+    }
+
+    // Coba ambil langsung dari database Supabase Cloud (tabel race_events)
+    if (!success) {
+      try {
+        final client = Supabase.instance.client;
+        final rows = await client
+            .from('race_events')
+            .select('*')
+            .order('id', ascending: true);
+        if (rows.isNotEmpty) {
+          _events = rows.map((item) => RaceEvent.fromJson(item)).toList();
+          _isLiveFromBackend = true;
+          _errorMessage = null;
+          success = true;
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_cacheKey, jsonEncode(rows));
+        }
+      } catch (e) {
+        debugPrint('[EventService] Supabase fetch fallback: $e');
       }
     }
 
