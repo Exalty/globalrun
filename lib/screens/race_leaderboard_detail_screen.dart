@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/race_standing_model.dart';
+import '../models/run_record.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/duo_theme.dart';
 import '../widgets/athlete_comparison_dialog.dart';
@@ -8,12 +9,14 @@ class RaceLeaderboardDetailScreen extends StatefulWidget {
   final String eventId;
   final String eventTitle;
   final double distanceKm;
+  final MyRaceStanding? standing;
 
   const RaceLeaderboardDetailScreen({
     super.key,
     required this.eventId,
     required this.eventTitle,
     required this.distanceKm,
+    this.standing,
   });
 
   @override
@@ -45,9 +48,27 @@ class _RaceLeaderboardDetailScreenState extends State<RaceLeaderboardDetailScree
       _errorMessage = null;
     });
     try {
+      final myRecord = widget.standing != null
+          ? RunRecord(
+              id: 'local_standing_${widget.standing!.eventId}',
+              eventId: widget.standing!.eventId,
+              eventTitle: widget.standing!.eventTitle,
+              startedAt: widget.standing!.completedAt,
+              durationSeconds: widget.standing!.myDurationSeconds,
+              distanceKm: widget.standing!.distanceKm,
+              targetKm: widget.standing!.distanceKm,
+              steps: widget.standing!.mySteps,
+              completed: true,
+              isSimulated: false,
+              blockHash: widget.standing!.blockHash,
+              points: const [],
+            )
+          : null;
+
       final data = await _leaderboardService.getRaceLeaderboard(
         widget.eventId,
         eventTitle: widget.eventTitle,
+        myRecord: myRecord,
       );
       if (mounted) {
         setState(() {
@@ -70,12 +91,17 @@ class _RaceLeaderboardDetailScreenState extends State<RaceLeaderboardDetailScree
   }
 
   void _compareWith(RaceParticipantEntry opponent) {
-    final myEntry = _participants.firstWhere(
-      (e) => e.isCurrentUser,
-      orElse: () => _participants.isNotEmpty
-          ? _participants.first
-          : opponent,
-    );
+    final myEntry = _participants.where((e) => e.isCurrentUser).firstOrNull;
+    if (myEntry == null) return;
+    if (opponent.isCurrentUser || opponent.userId == myEntry.userId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ini akun Anda sendiri! Ketuk pelari lain untuk membandingkan performa.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
 
     AthleteComparisonDialog.show(
       context,
@@ -545,9 +571,9 @@ class _RaceLeaderboardDetailScreenState extends State<RaceLeaderboardDetailScree
                   ),
                 ),
                 Text(
-                  'Bandingkan ➔',
+                  p.isCurrentUser ? '(Akun Kamu)' : 'Bandingkan ➔',
                   style: TextStyle(
-                    color: palette.primaryBlue,
+                    color: p.isCurrentUser ? palette.primaryBlue : palette.primaryBlue,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),

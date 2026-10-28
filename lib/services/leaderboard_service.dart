@@ -176,19 +176,67 @@ class LeaderboardService {
 
     // 2. Jika akun user saat ini memiliki rekor finish lari di perangkat lokal
     // dan belum tercatat di data cloud, sertakan ke dalam klasemen
-    if (myRecord != null && !list.any((e) => e.isCurrentUser || e.userId == currentUserId)) {
+    RunRecord? userRecord = myRecord;
+    final rawId = eventId.replaceAll(RegExp(r'[^0-9]'), '');
+    if (userRecord == null) {
+      try {
+        final attempts = await RunHistoryService().attemptsByEvent();
+        userRecord = attempts[eventId] ??
+            attempts['ev-$rawId'] ??
+            attempts[rawId];
+
+        if (userRecord == null && attempts.isNotEmpty) {
+          for (final r in attempts.values) {
+            final rRaw = r.eventId.replaceAll(RegExp(r'[^0-9]'), '');
+            if (r.eventId == eventId ||
+                (rawId.isNotEmpty && rRaw == rawId) ||
+                (eventTitle != null && r.eventTitle.trim().toLowerCase() == eventTitle.trim().toLowerCase())) {
+              userRecord = r;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[LeaderboardService] Error finding user local record: $e');
+      }
+    }
+
+    if (userRecord != null && !list.any((e) => e.isCurrentUser || e.userId == currentUserId)) {
       list.add(RaceParticipantEntry(
         rank: 1,
         userId: currentUserId,
         userName: '$currentUserName (Kamu)',
         avatarUrl: userProfile['photo'] as String?,
-        durationSeconds: myRecord.durationSeconds,
-        avgSpeedKmh: myRecord.avgSpeedKmh,
-        steps: myRecord.steps,
-        isAntiCheatVerified: !myRecord.isSimulated,
+        durationSeconds: userRecord.durationSeconds,
+        avgSpeedKmh: userRecord.avgSpeedKmh,
+        steps: userRecord.steps,
+        isAntiCheatVerified: !userRecord.isSimulated,
         isCurrentUser: true,
-        blockHash: myRecord.blockHash,
+        blockHash: userRecord.blockHash,
       ));
+
+      // Sinkronkan ke tabel race_results jika belum tersimpan di cloud
+      try {
+        final client = Supabase.instance.client;
+        final user = client.auth.currentUser;
+        if (user != null) {
+          final raceNum = int.tryParse(rawId) ?? int.tryParse(userRecord.eventId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1;
+          client.from('race_results').insert({
+            'user_id': user.id,
+            'race_id': raceNum,
+            'distance_km': userRecord.distanceKm,
+            'duration_seconds': userRecord.durationSeconds,
+            'steps_count': userRecord.steps,
+            'avg_speed_kmh': userRecord.avgSpeedKmh,
+            'block_hash': userRecord.blockHash,
+            'is_anti_cheat_verified': !userRecord.isSimulated,
+          }).then((_) {
+            debugPrint('[LeaderboardService] Sync local record to cloud OK');
+          }).catchError((err) {
+            debugPrint('[LeaderboardService] Sync to cloud error (ignored): $err');
+          });
+        }
+      } catch (_) {}
     }
 
     // 3. Urutkan berdasarkan durasi tersingkat secara kompetitif (durasi terkecil = peringkat 1)

@@ -300,6 +300,7 @@ class _RaceStandingsScreenState extends State<RaceStandingsScreen> {
                       eventId: item.eventId,
                       eventTitle: item.eventTitle,
                       distanceKm: item.distanceKm,
+                      standing: item,
                     ),
                   ),
                 );
