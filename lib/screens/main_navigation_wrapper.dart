@@ -109,6 +109,95 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                 label: 'PROFIL',
                 palette: palette,
               ),
+              _buildLogoutNavItem(palette),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmLogout(DuoColorPalette palette) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: palette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: palette.surfaceBorder, width: 2),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.logout_rounded, color: palette.heartRed, size: 26),
+            const SizedBox(width: 10),
+            Text(
+              'Keluar Akun?',
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Apakah kamu yakin ingin keluar dari akun GlobalRun kamu saat ini?',
+          style: TextStyle(color: palette.textSecondary, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Batal',
+              style: TextStyle(color: palette.textMuted, fontWeight: FontWeight.bold),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: palette.heartRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      widget.onLogout();
+    }
+  }
+
+  Widget _buildLogoutNavItem(DuoColorPalette palette) {
+    return Expanded(
+      child: InkWell(
+        onTap: () => _confirmLogout(palette),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.logout_rounded,
+                size: 21,
+                color: palette.heartRed.withOpacity(0.65),
+              ),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'LOGOUT',
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.3,
+                    color: palette.heartRed.withOpacity(0.65),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

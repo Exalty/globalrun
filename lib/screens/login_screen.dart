@@ -222,24 +222,32 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showBiometricNotConfiguredDialog() {
+    final palette = DuoColors.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: DuoColors.surface,
+        backgroundColor: palette.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: DuoColors.surfaceBorder, width: 2),
+          side: BorderSide(color: palette.surfaceBorder, width: 2),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.fingerprint_rounded, color: DuoColors.primaryBlue, size: 28),
-            SizedBox(width: 10),
-            Text('Biometrik Belum Aktif', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+            Icon(Icons.fingerprint_rounded, color: palette.primaryBlue, size: 28),
+            const SizedBox(width: 10),
+            Text(
+              'Biometrik Belum Aktif',
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Login sidik jari belum dinyalakan untuk akun ini.\n\nSilakan masuk terlebih dahulu menggunakan email dan password, lalu nyalakan saklar "Sidik Jari" di menu Profil.',
-          style: TextStyle(color: DuoColors.textSecondary, fontSize: 13, height: 1.4),
+          style: TextStyle(color: palette.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
           DuoButton(
@@ -261,35 +269,62 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Duolingo-style 3D Mascot/Icon Badge
+                // Chip Badge Gamifikasi
                 Container(
-                  width: 90,
-                  height: 90,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: DuoColors.surface,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: DuoColors.primaryBlue, width: 3),
-                    boxShadow: const [
+                    color: palette.streakGold.withOpacity(palette.isDark ? 0.20 : 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: palette.streakGold, width: 1.5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.local_fire_department_rounded, color: palette.streakGold, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'GLOBAL VIRTUAL RACE',
+                        style: TextStyle(
+                          color: palette.streakGold,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Duolingo-style 3D Mascot / Athletic Badge
+                Container(
+                  width: 86,
+                  height: 86,
+                  decoration: BoxDecoration(
+                    color: palette.surface,
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: palette.primaryBlue, width: 3),
+                    boxShadow: [
                       BoxShadow(
-                        color: DuoColors.primaryBlueShadow,
-                        offset: Offset(0, 5),
+                        color: palette.primaryBlueShadow,
+                        offset: const Offset(0, 5),
                         blurRadius: 0,
                       ),
                     ],
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.directions_run_rounded,
-                      size: 54,
-                      color: DuoColors.primaryBlue,
+                      size: 50,
+                      color: palette.primaryBlue,
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 Text(
                   'GLOBAL RUN',
@@ -305,10 +340,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   _isRegisterMode
                       ? 'Daftarkan atlet baru dan mulai petualangan lari!'
                       : 'Masuk dan taklukkan leaderboard kompetisi!',
-                  style: TextStyle(color: palette.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                    color: palette.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
                 // DuoCard Form Container
                 DuoCard(
@@ -329,6 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: _buildModeTab(
                                 title: 'MASUK',
                                 isActive: !_isRegisterMode,
+                                palette: palette,
                                 onTap: () {
                                   if (_isRegisterMode) {
                                     setState(() {
@@ -343,6 +383,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: _buildModeTab(
                                 title: 'DAFTAR',
                                 isActive: _isRegisterMode,
+                                palette: palette,
                                 onTap: () {
                                   if (!_isRegisterMode) {
                                     setState(() {
@@ -397,19 +438,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           decoration: BoxDecoration(
-                            color: DuoColors.heartRed.withOpacity(0.15),
+                            color: palette.heartRed.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: DuoColors.heartRed, width: 1.5),
+                            border: Border.all(color: palette.heartRed, width: 1.5),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline_rounded, color: DuoColors.heartRed, size: 20),
+                              Icon(Icons.error_outline_rounded, color: palette.heartRed, size: 20),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
-                                  style: const TextStyle(
-                                    color: DuoColors.heartRed,
+                                  style: TextStyle(
+                                    color: palette.heartRed,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -425,6 +466,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Tombol Submit 3D Duolingo
                       DuoButton(
                         text: _isRegisterMode ? 'DAFTAR SEKARANG' : 'MASUK SEKARANG',
+                        backgroundColor: _isRegisterMode ? palette.questGreen : palette.primaryBlue,
+                        shadowColor: _isRegisterMode ? palette.questGreenShadow : palette.primaryBlueShadow,
                         width: double.infinity,
                         isLoading: _isLoading,
                         onPressed: _handleSubmit,
@@ -436,12 +479,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         Row(
                           children: [
                             Expanded(child: Divider(color: palette.surfaceBorder, thickness: 1.5)),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
                               child: Text(
                                 'ATAU',
                                 style: TextStyle(
-                                  color: DuoColors.textMuted,
+                                  color: palette.textMuted,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -454,9 +497,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         DuoButton(
                           text: _isBiometricConfigured ? 'LOGIN SIDIK JARI' : 'SIDIK JARI (BELUM AKTIF)',
-                          backgroundColor: DuoColors.secondaryButton,
-                          shadowColor: DuoColors.secondaryButtonShadow,
-                          textColor: _isBiometricConfigured ? DuoColors.primaryBlue : DuoColors.textMuted,
+                          backgroundColor: palette.secondaryButton,
+                          shadowColor: palette.secondaryButtonShadow,
+                          textColor: _isBiometricConfigured ? palette.primaryBlue : palette.textMuted,
                           width: double.infinity,
                           icon: Icon(
                             Icons.fingerprint_rounded,
@@ -470,9 +513,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // Indikator Dual Database Status (Lokal & Online) - Bisa diklik untuk cek ulang
+                // Indikator Dual Database Status (Lokal & Online)
                 InkWell(
                   onTap: _isCheckingDb ? null : _checkDatabases,
                   borderRadius: BorderRadius.circular(20),
@@ -559,6 +602,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildModeTab({
     required String title,
     required bool isActive,
+    required DuoColorPalette palette,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -567,18 +611,27 @@ class _LoginScreenState extends State<LoginScreen> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? DuoColors.surface : Colors.transparent,
+          color: isActive ? palette.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isActive ? DuoColors.primaryBlue.withOpacity(0.5) : Colors.transparent,
+            color: isActive ? palette.primaryBlue.withOpacity(0.5) : Colors.transparent,
             width: 1.5,
           ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: palette.surfaceShadow.withOpacity(palette.isDark ? 0.6 : 0.2),
+                    offset: const Offset(0, 2),
+                    blurRadius: 2,
+                  ),
+                ]
+              : null,
         ),
         child: Center(
           child: Text(
             title,
             style: TextStyle(
-              color: isActive ? DuoColors.primaryBlue : DuoColors.textMuted,
+              color: isActive ? palette.primaryBlue : palette.textMuted,
               fontWeight: FontWeight.w900,
               fontSize: 12,
               letterSpacing: 0.6,
