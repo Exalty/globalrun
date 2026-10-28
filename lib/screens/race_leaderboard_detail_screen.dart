@@ -25,6 +25,7 @@ class _RaceLeaderboardDetailScreenState extends State<RaceLeaderboardDetailScree
   final ScrollController _scrollController = ScrollController();
   List<RaceParticipantEntry> _participants = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -39,16 +40,32 @@ class _RaceLeaderboardDetailScreenState extends State<RaceLeaderboardDetailScree
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    final data = await _leaderboardService.getRaceLeaderboard(
-      widget.eventId,
-      eventTitle: widget.eventTitle,
-    );
-    if (mounted) {
-      setState(() {
-        _participants = data;
-        _isLoading = false;
-      });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final data = await _leaderboardService.getRaceLeaderboard(
+        widget.eventId,
+        eventTitle: widget.eventTitle,
+      );
+      if (mounted) {
+        setState(() {
+          _participants = data;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal memuat klasemen: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -153,8 +170,48 @@ class _RaceLeaderboardDetailScreenState extends State<RaceLeaderboardDetailScree
                       ),
                       const SizedBox(height: 20),
 
-                      // Jika belum ada pelari yang menyelesaikan lomba ini
-                      if (_participants.isEmpty) ...[
+                      // Jika terjadi error saat memuat
+                      if (_errorMessage != null && _participants.isEmpty) ...[
+                        const SizedBox(height: 30),
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: palette.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.redAccent.withOpacity(0.5), width: 2),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.wifi_off_rounded, size: 54, color: Colors.redAccent),
+                              const SizedBox(height: 14),
+                              Text(
+                                'Gagal Memuat Klasemen',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: palette.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _errorMessage ?? 'Terjadi kendala koneksi ke database lomba.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 13, color: palette.textMuted),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _loadData,
+                                icon: const Icon(Icons.refresh_rounded, size: 18),
+                                label: const Text('Coba Lagi'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: palette.primaryBlue,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (_participants.isEmpty) ...[
                         const SizedBox(height: 30),
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),

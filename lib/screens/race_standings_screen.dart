@@ -15,6 +15,7 @@ class _RaceStandingsScreenState extends State<RaceStandingsScreen> {
   final LeaderboardService _leaderboardService = LeaderboardService();
   List<MyRaceStanding> _standings = [];
   bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -23,13 +24,29 @@ class _RaceStandingsScreenState extends State<RaceStandingsScreen> {
   }
 
   Future<void> _loadStandings() async {
-    setState(() => _isLoading = true);
-    final data = await _leaderboardService.getMyRaceStandings();
-    if (mounted) {
-      setState(() {
-        _standings = data;
-        _isLoading = false;
-      });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final data = await _leaderboardService.getMyRaceStandings();
+      if (mounted) {
+        setState(() {
+          _standings = data;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Gagal terhubung ke data lomba: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -69,7 +86,7 @@ class _RaceStandingsScreenState extends State<RaceStandingsScreen> {
               color: palette.primaryBlue,
               backgroundColor: palette.surface,
               child: _standings.isEmpty
-                  ? _buildEmptyState(palette)
+                  ? (_errorMessage != null ? _buildErrorState(palette) : _buildEmptyState(palette))
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
@@ -355,6 +372,50 @@ class _RaceStandingsScreenState extends State<RaceStandingsScreen> {
               text: 'KEMBALI KE BERANDA LOMBA',
               height: 46,
               onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(DuoColorPalette palette) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: palette.surface,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.redAccent, width: 2),
+              ),
+              child: const Icon(Icons.wifi_off_rounded, size: 40, color: Colors.redAccent),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Gagal Memuat Klasemen',
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Terjadi kendala saat menghubungkan ke database lomba.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: palette.textSecondary, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 24),
+            DuoButton(
+              text: 'COBA LAGI',
+              height: 46,
+              onPressed: _loadStandings,
             ),
           ],
         ),

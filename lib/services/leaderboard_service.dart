@@ -110,7 +110,10 @@ class LeaderboardService {
         query = query.eq('race_id', raceIdNum);
       }
 
-      final rows = await query.order('duration_seconds', ascending: true).limit(100);
+      final rows = await query
+          .order('duration_seconds', ascending: true)
+          .limit(100)
+          .timeout(const Duration(seconds: 5));
 
       if (rows.isNotEmpty) {
         // Ambil profil asli user dari tabel `profiles`
@@ -126,7 +129,8 @@ class LeaderboardService {
             final profRows = await client
                 .from('profiles')
                 .select('id, full_name, email')
-                .filter('id', 'in', userIds);
+                .filter('id', 'in', userIds)
+                .timeout(const Duration(seconds: 4));
             for (final p in profRows) {
               final id = p['id']?.toString();
               if (id != null) profilesMap[id] = p;

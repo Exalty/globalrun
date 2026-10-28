@@ -24,14 +24,16 @@ class RaceParticipantEntry {
   });
 
   String get paceFormatted {
-    if (avgSpeedKmh <= 0) return '-';
+    if (avgSpeedKmh <= 0.1) return '-';
     final paceDecimal = 60.0 / avgSpeedKmh;
+    if (paceDecimal.isNaN || paceDecimal.isInfinite || paceDecimal > 120.0) return '-';
     final mins = paceDecimal.floor();
     final secs = ((paceDecimal - mins) * 60).round();
     return "$mins'${secs.toString().padLeft(2, '0')}\"/km";
   }
 
   String get durationFormatted {
+    if (durationSeconds <= 0) return '0m 0d';
     final h = durationSeconds ~/ 3600;
     final m = (durationSeconds % 3600) ~/ 60;
     final s = durationSeconds % 60;
@@ -72,14 +74,16 @@ class MyRaceStanding {
   });
 
   String get paceFormatted {
-    if (myAvgSpeedKmh <= 0) return '-';
+    if (myAvgSpeedKmh <= 0.1) return '-';
     final paceDecimal = 60.0 / myAvgSpeedKmh;
+    if (paceDecimal.isNaN || paceDecimal.isInfinite || paceDecimal > 120.0) return '-';
     final mins = paceDecimal.floor();
     final secs = ((paceDecimal - mins) * 60).round();
     return "$mins'${secs.toString().padLeft(2, '0')}\"/km";
   }
 
   String get durationFormatted {
+    if (myDurationSeconds <= 0) return '0m 0d';
     final h = myDurationSeconds ~/ 3600;
     final m = (myDurationSeconds % 3600) ~/ 60;
     final s = myDurationSeconds % 60;
