@@ -14,6 +14,7 @@ import '../services/run_history_service.dart';
 import '../services/blockchain_service.dart';
 import 'run_history_screen.dart';
 import 'blockchain_certificate_screen.dart';
+import 'race_standings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -99,6 +100,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     if (mounted) _loadProfile();
+  }
+
+  /// Statistik Kompetisi -> Klasemen & Peringkat Lomba Saya
+  Future<void> _openRaceStandings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const RaceStandingsScreen(),
+      ),
+    );
   }
 
   /// Mengarahkan dan scroll halus ke kartu pengaturan sidik jari di halaman profil
@@ -824,7 +835,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onTap: _openRunHistory),
                       _buildStatColumn('Race Diikuti', '${_stats.raceCount} Acara',
                           Icons.emoji_events_rounded, palette.streakGold, palette,
-                          onTap: _openRunHistory),
+                          onTap: _openRaceStandings),
                       _buildStatColumn('Medali NFT', '${_stats.medalCount} Dicetak',
                           Icons.military_tech_rounded, palette.neonCyan, palette,
                           onTap: _openMedals),
@@ -837,7 +848,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Icon(Icons.touch_app_rounded, size: 14, color: palette.textMuted),
                       const SizedBox(width: 6),
                       Text(
-                        'Ketuk untuk melihat riwayat lari & medali NFT',
+                        'Ketuk untuk melihat riwayat lari, klasemen, & medali NFT',
                         style: TextStyle(color: palette.textMuted, fontSize: 11),
                       ),
                     ],

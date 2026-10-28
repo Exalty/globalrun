@@ -20,6 +20,7 @@ import 'blockchain_certificate_screen.dart';
 import 'notification_screen.dart';
 import 'run_summary_screen.dart';
 import 'topup_screen.dart';
+import 'race_standings_screen.dart';
 import '../theme/duo_theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -56,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // Lari yang sudah pernah diikuti per event (eventId -> RunRecord terbaru),
   // baik yang selesai maupun yang dihentikan di tengah.
   Map<String, RunRecord> _completedRuns = {};
-  int _userStreak = 0;
 
   // Diatur terpusat di RunHistoryService.oneAttemptPerRace
   // (true = 1 race hanya sekali, false = boleh mengulang saat testing)
@@ -77,11 +77,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadCompletedRuns() async {
     try {
       final map = await RunHistoryService().attemptsByEvent();
-      final streak = await RunHistoryService().computeStreakDays();
       if (mounted) {
         setState(() {
           _completedRuns = map;
-          _userStreak = streak;
         });
       }
     } catch (_) {}
@@ -764,6 +762,18 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
           IconButton(
+            icon: Icon(Icons.emoji_events_rounded, color: palette.streakGold),
+            tooltip: 'Peringkat Lomba Saya',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const RaceStandingsScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: Icon(Icons.military_tech_rounded, color: palette.streakGold),
             tooltip: 'Blockchain Medals NFT',
             onPressed: () {
@@ -911,16 +921,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Streak Hari
-                  DuoChip(
-                    icon: Icon(Icons.local_fire_department_rounded, color: palette.streakGold, size: 14),
-                    label: '$_userStreak HARI',
-                    borderColor: palette.streakGoldShadow,
-                    backgroundColor: palette.surface,
-                    textColor: palette.streakGold,
                   ),
                   const SizedBox(width: 8),
 
