@@ -153,28 +153,59 @@ class _RaceLeaderboardDetailScreenState extends State<RaceLeaderboardDetailScree
                       ),
                       const SizedBox(height: 20),
 
-                      // Podium 3 Besar (Jika ada minimal 3 pelari)
-                      if (_participants.length >= 3) ...[
+                      // Jika belum ada pelari yang menyelesaikan lomba ini
+                      if (_participants.isEmpty) ...[
+                        const SizedBox(height: 30),
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: palette.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: palette.surfaceBorder, width: 2),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.emoji_events_outlined, size: 54, color: palette.textMuted),
+                              const SizedBox(height: 14),
+                              Text(
+                                'Belum Ada Catatan Waktu',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: palette.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Belum ada atlet yang menyelesaikan lomba ini. Selesaikan lari sekarang dan jadilah juara pertama di klasemen!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 13, color: palette.textMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        // Podium 3 Besar (jika ada pelari)
                         _buildPodium3D(palette),
                         const SizedBox(height: 24),
-                      ],
 
-                      Text(
-                        'DAFTAR LENGKAP KLASEMEN',
-                        style: TextStyle(
-                          color: palette.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
+                        Text(
+                          'DAFTAR LENGKAP KLASEMEN',
+                          style: TextStyle(
+                            color: palette.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10),
+                        const SizedBox(height: 10),
 
-                      // List Peserta
-                      ...List.generate(_participants.length, (index) {
-                        final p = _participants[index];
-                        return _buildParticipantTile(p, palette);
-                      }),
+                        // List Peserta
+                        ...List.generate(_participants.length, (index) {
+                          final p = _participants[index];
+                          return _buildParticipantTile(p, palette);
+                        }),
+                      ],
                     ],
                   ),
 

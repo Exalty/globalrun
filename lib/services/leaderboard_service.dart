@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/race_standing_model.dart';
 import '../models/run_record.dart';
+import '../models/race_event.dart';
 import 'auth_service.dart';
 import 'run_history_service.dart';
 
@@ -10,13 +11,13 @@ class LeaderboardService {
   factory LeaderboardService() => _instance;
   LeaderboardService._internal();
 
-  /// Mengambil daftar semua event yang pernah diselesaikan oleh akun ini beserta peringkatnya
+  /// Mengambil daftar semua event yang pernah diselesaikan oleh akun ini beserta peringkat aslinya
   Future<List<MyRaceStanding>> getMyRaceStandings() async {
     final List<MyRaceStanding> results = [];
     final runHistory = RunHistoryService();
     final authService = AuthService();
 
-    // 1. Ambil seluruh lari yang pernah dicatat oleh akun ini
+    // 1. Ambil seluruh lari yang pernah dicatat oleh akun ini (lokal + supabase cloud)
     final attempts = await runHistory.attemptsByEvent();
     final profile = await authService.getUserProfile();
     final myUserId = await authService.getCurrentUserId() ?? 'me';
@@ -24,23 +25,35 @@ class LeaderboardService {
         ? profile['name'] as String
         : 'Saya';
 
+    final sampleEvents = RaceEvent.sampleEvents();
+
     for (final entry in attempts.entries) {
       final eventId = entry.key;
       final record = entry.value;
 
-      // Hanya tampilkan yang berhasil finish (bukan yang berhenti sebelum jarak minimum)
+      // Hanya tampilkan yang berhasil finish
       if (record.distanceKm <= 0.0) continue;
 
-      // Ambil klasemen peserta lomba ini untuk menentukan peringkat akun saya
+      // Ambil nama event asli
+      String title = record.eventTitle;
+      if (title.isEmpty || title.startsWith('Race Event #') || title.startsWith('Virtual Race #')) {
+        final match = sampleEvents.firstWhere(
+          (e) => e.id == eventId || e.id.replaceAll(RegExp(r'[^0-9]'), '') == eventId.replaceAll(RegExp(r'[^0-9]'), ''),
+          orElse: () => sampleEvents.first,
+        );
+        title = match.title;
+      }
+
+      // Ambil klasemen peserta asli lomba ini untuk menentukan peringkat akun saya
       final leaderboard = await getRaceLeaderboard(
         eventId,
-        eventTitle: record.eventTitle,
+        eventTitle: title,
         myRecord: record,
         myUserId: myUserId,
         myName: myName,
       );
 
-      // Cari peringkat saya
+      // Cari peringkat saya di antara pelari asli
       int rank = 1;
       final myIdx = leaderboard.indexWhere((e) => e.isCurrentUser);
       if (myIdx != -1) {
@@ -49,7 +62,7 @@ class LeaderboardService {
 
       results.add(MyRaceStanding(
         eventId: eventId,
-        eventTitle: record.eventTitle.isNotEmpty ? record.eventTitle : 'Virtual Race #$eventId',
+        eventTitle: title,
         distanceKm: record.distanceKm,
         eventType: record.distanceKm > 25.0 ? 'cycling' : 'run',
         myRank: rank,
@@ -68,7 +81,7 @@ class LeaderboardService {
     return results;
   }
 
-  /// Mengambil klasemen lengkap (ranking 1 sampai terakhir) untuk suatu event lomba
+  /// Mengambil klasemen lengkap dari data asli tabel `race_results` & `profiles` di Supabase
   Future<List<RaceParticipantEntry>> getRaceLeaderboard(
     String eventId, {
     String? eventTitle,
@@ -79,67 +92,89 @@ class LeaderboardService {
     final List<RaceParticipantEntry> list = [];
     final currentUserId = myUserId ?? (await AuthService().getCurrentUserId()) ?? 'me';
     final userProfile = await AuthService().getUserProfile();
-    final currentUserName = myName ?? ((userProfile['name'] as String?)?.trim().isNotEmpty == true
-        ? userProfile['name'] as String
-        : 'Saya');
+    final currentUserName = myName ??
+        ((userProfile['name'] as String?)?.trim().isNotEmpty == true
+            ? userProfile['name'] as String
+            : 'Saya');
 
-    // 1. Coba tarik data real dari Supabase Cloud jika online
-    bool fetchedFromCloud = false;
+    final raceIdNum = int.tryParse(eventId.replaceAll(RegExp(r'[^0-9]'), '')) ?? int.tryParse(eventId);
+
+    // 1. Tarik data real dari Supabase table `race_results`
     try {
       final client = Supabase.instance.client;
-      final raceIdInt = int.tryParse(eventId);
-
       var query = client
           .from('race_results')
-          .select('id, user_id, duration_seconds, distance_km, avg_speed_kmh, steps_count, block_hash, is_anti_cheat_verified, profiles(full_name, avatar_url)')
-          .eq('is_anti_cheat_verified', true);
+          .select('id, user_id, duration_seconds, distance_km, avg_speed_kmh, steps_count, block_hash, is_anti_cheat_verified');
 
-      if (raceIdInt != null) {
-        query = query.eq('race_id', raceIdInt);
+      if (raceIdNum != null) {
+        query = query.eq('race_id', raceIdNum);
       }
 
-      final rows = await query.order('duration_seconds', ascending: true).limit(50);
+      final rows = await query.order('duration_seconds', ascending: true).limit(100);
+
       if (rows.isNotEmpty) {
-        int r = 1;
+        // Ambil profil asli user dari tabel `profiles`
+        final userIds = rows
+            .map((r) => r['user_id']?.toString())
+            .whereType<String>()
+            .toSet()
+            .toList();
+
+        final Map<String, Map<String, dynamic>> profilesMap = {};
+        if (userIds.isNotEmpty) {
+          try {
+            final profRows = await client
+                .from('profiles')
+                .select('id, full_name, email')
+                .filter('id', 'in', userIds);
+            for (final p in profRows) {
+              final id = p['id']?.toString();
+              if (id != null) profilesMap[id] = p;
+            }
+          } catch (e) {
+            debugPrint('[LeaderboardService] Error fetching user profiles: $e');
+          }
+        }
+
         for (final row in rows) {
           final uId = row['user_id']?.toString() ?? '';
-          final prof = row['profiles'] as Map<String, dynamic>?;
-          final name = prof?['full_name'] as String? ?? 'Atlet Runner #$r';
-          final avatar = prof?['avatar_url'] as String?;
+          final prof = profilesMap[uId];
+          final rawName = prof?['full_name'] as String?;
+          final email = prof?['email'] as String?;
+          final displayName = (rawName != null && rawName.trim().isNotEmpty)
+              ? rawName.trim()
+              : (email != null && email.isNotEmpty ? email.split('@')[0] : 'Atlet');
+
           final dur = (row['duration_seconds'] as num?)?.toInt() ?? 0;
           final speed = (row['avg_speed_kmh'] as num?)?.toDouble() ?? 0.0;
           final steps = (row['steps_count'] as num?)?.toInt() ?? 0;
           final bHash = row['block_hash'] as String?;
+          final isVerified = row['is_anti_cheat_verified'] as bool? ?? true;
+          final isMe = uId == currentUserId;
 
           list.add(RaceParticipantEntry(
-            rank: r,
+            rank: 1, // akan dihitung ulang saat disortir
             userId: uId,
-            userName: uId == currentUserId ? '$name (Kamu)' : name,
-            avatarUrl: avatar,
+            userName: isMe ? '$displayName (Kamu)' : displayName,
+            avatarUrl: null,
             durationSeconds: dur,
             avgSpeedKmh: speed,
             steps: steps,
-            isAntiCheatVerified: true,
-            isCurrentUser: uId == currentUserId,
+            isAntiCheatVerified: isVerified,
+            isCurrentUser: isMe,
             blockHash: bHash,
           ));
-          r++;
         }
-        fetchedFromCloud = true;
       }
     } catch (e) {
-      debugPrint('[LeaderboardService] Supabase query fallback: $e');
+      debugPrint('[LeaderboardService] Error fetching real race_results: $e');
     }
 
-    // 2. Jika offline atau data cloud masih kosong untuk race ini, sediakan benchmark peserta komunitas
-    if (!fetchedFromCloud || list.isEmpty) {
-      list.addAll(_generateCommunityLeaderboard(eventId, eventTitle ?? 'Lomba Virtual'));
-    }
-
-    // 3. Masukkan hasil race akun user sendiri jika belum ada di list
-    if (myRecord != null && !list.any((e) => e.isCurrentUser)) {
+    // 2. Jika akun user saat ini memiliki rekor finish lari di perangkat lokal
+    // dan belum tercatat di data cloud, sertakan ke dalam klasemen
+    if (myRecord != null && !list.any((e) => e.isCurrentUser || e.userId == currentUserId)) {
       list.add(RaceParticipantEntry(
-        rank: 999, // akan diurutkan ulang
+        rank: 1,
         userId: currentUserId,
         userName: '$currentUserName (Kamu)',
         avatarUrl: userProfile['photo'] as String?,
@@ -152,7 +187,7 @@ class LeaderboardService {
       ));
     }
 
-    // 4. Urutkan berdasarkan durasi tersingkat (durasi terkecil = peringkat 1)
+    // 3. Urutkan berdasarkan durasi tersingkat secara kompetitif (durasi terkecil = peringkat 1)
     list.sort((a, b) {
       if (a.durationSeconds != b.durationSeconds) {
         return a.durationSeconds.compareTo(b.durationSeconds);
@@ -160,7 +195,7 @@ class LeaderboardService {
       return b.avgSpeedKmh.compareTo(a.avgSpeedKmh);
     });
 
-    // 5. Perbarui nomor urut peringkat (Rank 1, 2, 3...)
+    // 4. Tetapkan nomor ranking final (1, 2, 3...)
     final List<RaceParticipantEntry> finalSorted = [];
     for (int i = 0; i < list.length; i++) {
       final old = list[i];
@@ -179,54 +214,5 @@ class LeaderboardService {
     }
 
     return finalSorted;
-  }
-
-  /// Generator benchmark peserta komunitas atlet virtual (Realistis saat offline/testing)
-  List<RaceParticipantEntry> _generateCommunityLeaderboard(String eventId, String title) {
-    final int seed = eventId.hashCode.abs();
-    final double baseDist = title.contains('21K')
-        ? 21.1
-        : title.contains('42K')
-            ? 42.2
-            : title.contains('5K')
-                ? 5.0
-                : 10.0;
-
-    // Base pace kompetitif atlet maraton (~4:30 - 5:45 min/km)
-    final int baseSecPerKm = 270 + (seed % 40);
-
-    final participants = [
-      {'name': 'Rafi Ahmad Fauzi', 'offset': -35, 'cadence': 176},
-      {'name': 'Bima Satria Perkasa', 'offset': -15, 'cadence': 172},
-      {'name': 'Dian Kusuma Wardani', 'offset': 20, 'cadence': 168},
-      {'name': 'Rahmat Hidayat', 'offset': 55, 'cadence': 165},
-      {'name': 'Siti Nurhaliza', 'offset': 110, 'cadence': 162},
-      {'name': 'Andi Pratama Jaya', 'offset': 170, 'cadence': 158},
-      {'name': 'Agus Salim Wibowo', 'offset': 240, 'cadence': 155},
-    ];
-
-    final List<RaceParticipantEntry> list = [];
-    for (int i = 0; i < participants.length; i++) {
-      final p = participants[i];
-      final offsetSec = p['offset'] as int;
-      final cadence = p['cadence'] as int;
-      final dur = ((baseDist * baseSecPerKm) + offsetSec).round();
-      final speed = dur > 0 ? (baseDist / (dur / 3600.0)) : 10.0;
-      final steps = (dur / 60.0 * cadence).round();
-
-      list.add(RaceParticipantEntry(
-        rank: i + 1,
-        userId: 'community_runner_${i + 1}_$seed',
-        userName: p['name'] as String,
-        avatarUrl: null,
-        durationSeconds: dur,
-        avgSpeedKmh: speed,
-        steps: steps,
-        isAntiCheatVerified: true,
-        isCurrentUser: false,
-        blockHash: '0xabc${dur}hash$seed',
-      ));
-    }
-    return list;
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/run_record.dart';
+import '../models/race_event.dart';
 
 class RunStats {
   final double totalKm;
@@ -67,9 +68,10 @@ class RunHistoryService {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
       if (user != null) {
+        final raceNum = int.tryParse(record.eventId.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1;
         await client.from('race_results').insert({
           'user_id': user.id,
-          'race_id': int.tryParse(record.eventId),
+          'race_id': raceNum,
           'distance_km': record.distanceKm,
           'duration_seconds': record.durationSeconds,
           'steps_count': record.steps,
@@ -128,17 +130,24 @@ class RunHistoryService {
             .timeout(const Duration(seconds: 3));
 
         if (res.isNotEmpty) {
+          final sampleEvents = RaceEvent.sampleEvents();
           for (final item in res) {
-            final raceIdStr = (item['race_id'] ?? '').toString();
+            final rawRaceId = (item['race_id'] ?? '').toString();
+            final raceIdStr = rawRaceId.startsWith('ev-') ? rawRaceId : 'ev-$rawRaceId';
             final remoteId = 'remote_${item['id']}';
             final distance = (item['distance_km'] as num?)?.toDouble() ?? 0.0;
+
+            final matchedEvent = sampleEvents.firstWhere(
+              (e) => e.id == raceIdStr || e.id.replaceAll(RegExp(r'[^0-9]'), '') == rawRaceId,
+              orElse: () => sampleEvents.first,
+            );
 
             // Jika belum ada di lokal untuk akun ini, tambahkan
             if (!ids.contains(remoteId) && !out.any((r) => r.eventId == raceIdStr && (r.distanceKm - distance).abs() < 0.01)) {
               final rec = RunRecord(
                 id: remoteId,
                 eventId: raceIdStr,
-                eventTitle: 'Race Event #$raceIdStr',
+                eventTitle: matchedEvent.title,
                 startedAt: DateTime.tryParse(item['created_at']?.toString() ?? '') ?? DateTime.now(),
                 durationSeconds: (item['duration_seconds'] as num?)?.toInt() ?? 0,
                 distanceKm: distance,
