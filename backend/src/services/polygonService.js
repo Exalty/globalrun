@@ -105,15 +105,25 @@ class PolygonService {
     const tx = await contract.mintMedal(mintParams);
     console.log(`[Polygon Relayer] Tx submitted: ${tx.hash}. Menunggu konfirmasi...`);
 
-    const receipt = await tx.wait(1);
-
     const polygonscanUrl = `https://amoy.polygonscan.com/tx/${tx.hash}`;
-    console.log(`[Polygon Relayer] Sukses! Verified on-chain: ${polygonscanUrl}`);
+
+    // Coba tunggu konfirmasi kilat (maksimal 4 detik). Jika lebih lama, lanjutkan tanpa memblokir HP pelari
+    let blockNumber = null;
+    try {
+      const receipt = await Promise.race([
+        tx.wait(1),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('BackgroundConfirm')), 4000)),
+      ]);
+      blockNumber = receipt?.blockNumber ?? null;
+      console.log(`[Polygon Relayer] Konfirmasi kilat selesai di blok #${blockNumber}`);
+    } catch (_) {
+      console.log(`[Polygon Relayer] Transaksi disubmit ke mempool Polygon (konfirmasi berjalan di background). Tx: ${tx.hash}`);
+    }
 
     return {
       success: true,
       txHash: tx.hash,
-      blockNumber: receipt.blockNumber,
+      blockNumber,
       contractAddress: this.contractAddress,
       polygonscanUrl,
     };

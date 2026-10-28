@@ -277,7 +277,7 @@ class BlockchainService {
             'tier': block.tier,
             'localBlockHash': block.hash,
           }),
-        ).timeout(const Duration(seconds: 25));
+        ).timeout(const Duration(seconds: 40));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
