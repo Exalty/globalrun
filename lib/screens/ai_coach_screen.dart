@@ -309,42 +309,6 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
       ),
       body: Column(
         children: [
-          // Banner telemetri aktivitas (Responsif potret tanpa overflow)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: palette.surface,
-              border: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 1.5)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildStatBadge(
-                    Icons.directions_run_rounded,
-                    '${widget.currentDistanceKm.toStringAsFixed(1)} KM',
-                    palette,
-                  ),
-                ),
-                Container(width: 1, height: 18, color: palette.surfaceBorder),
-                Expanded(
-                  child: _buildStatBadge(
-                    Icons.speed_rounded,
-                    '${widget.currentSpeedKmh.toStringAsFixed(1)} km/h',
-                    palette,
-                  ),
-                ),
-                Container(width: 1, height: 18, color: palette.surfaceBorder),
-                Expanded(
-                  child: _buildStatBadge(
-                    Icons.directions_walk_rounded,
-                    '${widget.currentSteps} Steps',
-                    palette,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // Daftar pesan chat
           Expanded(
             child: ListView.builder(
@@ -561,28 +525,6 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatBadge(IconData icon, String text, DuoColorPalette palette) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: palette.primaryBlue, size: 16),
-        const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: palette.textPrimary,
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 
