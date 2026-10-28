@@ -101,10 +101,11 @@ class _TopUpScreenState extends State<TopUpScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _processing = false);
+      final palette = DuoColors.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Top up gagal: $e'),
-          backgroundColor: DuoColors.heartRed,
+          backgroundColor: palette.heartRed,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -131,7 +132,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
         ),
         title: Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: DuoColors.questGreen, size: 26),
+            Icon(Icons.check_circle_rounded, color: palette.questGreen, size: 26),
             const SizedBox(width: 8),
             Text('Top Up Berhasil',
                 style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.w900)),
@@ -146,7 +147,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx),
             style: ElevatedButton.styleFrom(
-              backgroundColor: DuoColors.questGreen,
+              backgroundColor: palette.questGreen,
               foregroundColor: Colors.white,
             ),
             child: const Text('OK', style: TextStyle(fontWeight: FontWeight.w900)),
@@ -200,8 +201,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Icon(Icons.account_balance_wallet_rounded,
-                        color: DuoColors.streakGold, size: 28),
+                    Icon(Icons.account_balance_wallet_rounded,
+                        color: palette.streakGold, size: 28),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -241,7 +242,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   color: palette.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: amountError != null ? DuoColors.heartRed : palette.surfaceBorder,
+                    color: amountError != null ? palette.heartRed : palette.surfaceBorder,
                     width: 2,
                   ),
                 ),
@@ -266,8 +267,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(amountError,
-                      style: const TextStyle(
-                          color: DuoColors.heartRed,
+                      style: TextStyle(
+                          color: palette.heartRed,
                           fontSize: 12,
                           fontWeight: FontWeight.bold)),
                 )
@@ -386,8 +387,8 @@ class _TopUpScreenState extends State<TopUpScreen> {
               DuoButton(
                 text: _processing ? 'MEMPROSES PEMBAYARAN...' : 'TOP UP SEKARANG',
                 height: 50,
-                backgroundColor: DuoColors.questGreen,
-                shadowColor: DuoColors.questGreenShadow,
+                backgroundColor: palette.questGreen,
+                shadowColor: palette.questGreenShadow,
                 textColor: Colors.white,
                 isLoading: _processing,
                 icon: const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),

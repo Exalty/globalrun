@@ -602,10 +602,10 @@ class _MiniGameScreenState extends State<MiniGameScreen>
                             decoration: BoxDecoration(
                               color: palette.surface,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: DuoColors.streakGold, width: 1.5),
+                              border: Border.all(color: palette.streakGold, width: 1.5),
                               boxShadow: [
                                 BoxShadow(
-                                  color: DuoColors.streakGoldShadow.withOpacity(0.3),
+                                  color: palette.streakGoldShadow.withOpacity(0.3),
                                   offset: const Offset(0, 2),
                                   blurRadius: 0,
                                 ),
@@ -661,13 +661,13 @@ class _MiniGameScreenState extends State<MiniGameScreen>
                                 return Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: DuoColors.heartRed,
+                                    color: palette.heartRed,
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(color: Colors.white, width: 2),
-                                    boxShadow: const [
+                                    boxShadow: [
                                       BoxShadow(
-                                        color: DuoColors.heartRedShadow,
-                                        offset: Offset(0, 3),
+                                        color: palette.heartRedShadow,
+                                        offset: const Offset(0, 3),
                                         blurRadius: 0,
                                       ),
                                     ],
@@ -738,8 +738,8 @@ class _MiniGameScreenState extends State<MiniGameScreen>
                       const SizedBox(width: 8),
                       DuoChip(
                         label: 'BEST ${max(_highScore, engine.score)}',
-                        textColor: DuoColors.streakGold,
-                        borderColor: DuoColors.streakGoldShadow,
+                        textColor: palette.streakGold,
+                        borderColor: palette.streakGoldShadow,
                         backgroundColor: palette.background,
                       ),
                     ],
@@ -853,12 +853,14 @@ class _MiniGameScreenState extends State<MiniGameScreen>
     VoidCallback onTap, {
     Color? bgColor,
     Color? shadowColor,
+    DuoColorPalette? palette,
   }) {
+    final p = palette ?? DuoColors.of(context);
     return DuoButton(
       text: label,
       onPressed: onTap,
-      backgroundColor: bgColor ?? DuoColors.questGreen,
-      shadowColor: shadowColor ?? DuoColors.questGreenShadow,
+      backgroundColor: bgColor ?? p.questGreen,
+      shadowColor: shadowColor ?? p.questGreenShadow,
       textColor: Colors.white,
       borderRadius: 14,
       height: 48,
@@ -1023,14 +1025,14 @@ class _MiniGameScreenState extends State<MiniGameScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: DuoColors.questGreen.withOpacity(0.18),
+                    color: palette.questGreen.withOpacity(palette.isDark ? 0.2 : 0.12),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: DuoColors.questGreen, width: 1),
+                    border: Border.all(color: palette.questGreen, width: 1),
                   ),
-                  child: const Text(
+                  child: Text(
                     'REKOR TERBAIK BARU',
                     style: TextStyle(
-                      color: DuoColors.questGreen,
+                      color: palette.questGreen,
                       fontWeight: FontWeight.w900,
                       fontSize: 10,
                       letterSpacing: 0.5,

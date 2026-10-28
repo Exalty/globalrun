@@ -207,7 +207,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                     content: Text(key.isNotEmpty
                         ? 'API Key berhasil disimpan'
                         : 'API Key berhasil dihapus'),
-                    backgroundColor: key.isNotEmpty ? DuoColors.questGreen : DuoColors.streakGold,
+                    backgroundColor: key.isNotEmpty ? palette.questGreen : palette.streakGold,
                   ),
                 );
                 setState(() {});
@@ -228,13 +228,13 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
   ({String label, Color color}) _statusBadge(DuoColorPalette palette) {
     switch (widget.coachService.lastSourceUsed) {
       case 'gemini':
-        return (label: 'Gemini Live', color: DuoColors.questGreen);
+        return (label: 'Gemini Live', color: palette.questGreen);
       case 'local':
-        return (label: 'Mode Offline', color: DuoColors.streakGold);
+        return (label: 'Mode Offline', color: palette.streakGold);
       default:
         return _hasApiKey
             ? (label: 'Siap', color: palette.primaryBlue)
-            : (label: 'Tanpa API Key', color: DuoColors.streakGold);
+            : (label: 'Tanpa API Key', color: palette.streakGold);
     }
   }
 
@@ -549,7 +549,7 @@ class _AiCoachScreenState extends State<AiCoachScreen> {
                   h2: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
                   h3: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                   code: TextStyle(
-                    color: DuoColors.streakGold,
+                    color: palette.streakGold,
                     backgroundColor: palette.background,
                     fontSize: 13,
                   ),

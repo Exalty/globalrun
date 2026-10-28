@@ -101,7 +101,7 @@ class _RunHistoryScreenState extends State<RunHistoryScreen> {
                       children: [
                         Icon(
                           r.completed ? Icons.emoji_events_rounded : Icons.directions_run_rounded,
-                          color: r.completed ? Colors.amber : Colors.cyanAccent,
+                          color: r.completed ? palette.streakGold : palette.primaryBlue,
                           size: 30,
                         ),
                         const SizedBox(width: 12),

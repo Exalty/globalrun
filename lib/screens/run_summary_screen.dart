@@ -152,10 +152,10 @@ class RunSummaryScreen extends StatelessWidget {
                   DuoButton(
                     text: 'BUKA MEDALI NFT',
                     height: 48,
-                    backgroundColor: palette.neonCyan,
-                    shadowColor: palette.neonCyanShadow,
-                    textColor: Colors.black,
-                    icon: const Icon(Icons.workspace_premium_rounded, color: Colors.black, size: 20),
+                    backgroundColor: palette.primaryBlue,
+                    shadowColor: palette.primaryBlueShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(

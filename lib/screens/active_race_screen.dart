@@ -1126,7 +1126,7 @@ class _ActiveRaceScreenState extends State<ActiveRaceScreen> {
     } else {
       final acc = location.gpsAccuracy!;
       text = 'Live GPS  ±${acc.round()} m · ${location.fixCount} fix';
-      dot = acc <= 15 ? Colors.greenAccent : Colors.amber;
+      dot = acc <= 15 ? (palette.isDark ? Colors.greenAccent : DuoColors.questGreen) : palette.streakGold;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

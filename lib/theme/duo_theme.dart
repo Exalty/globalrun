@@ -103,17 +103,17 @@ class DuoColors {
     secondaryButtonBorder: Color(0xFFE2E8F0),
     secondaryButtonShadow: Color(0xFFCBD5E1),
     secondaryButtonText: Color(0xFF1E293B),
-    streakGold: Color(0xFFFFB800),
-    streakGoldShadow: Color(0xFFD99B00),
-    heartRed: Color(0xFFFF4B4B),
-    heartRedShadow: Color(0xFFD93636),
-    questGreen: Color(0xFF58CC02),
-    questGreenShadow: Color(0xFF46A302),
+    streakGold: Color(0xFFD97706), // Amber pekat agar kontras tajam di latar putih
+    streakGoldShadow: Color(0xFFB45309),
+    heartRed: Color(0xFFDC2626),
+    heartRedShadow: Color(0xFFB91C1C),
+    questGreen: Color(0xFF16A34A), // Hijau pekat agar kontras tajam di latar putih
+    questGreenShadow: Color(0xFF15803D),
     neonCyan: Color(0xFF0284C7),
     neonCyanShadow: Color(0xFF0369A1),
     textPrimary: Color(0xFF0F172A), // Teks hitam/slate pekat kontras tinggi
     textSecondary: Color(0xFF475569),
-    textMuted: Color(0xFF94A3B8),
+    textMuted: Color(0xFF64748B), // Slate-500 agar teks bantuan mudah dibaca di latar putih
     inputFill: Color(0xFFF1F5F9),
   );
 

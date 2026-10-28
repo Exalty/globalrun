@@ -26,6 +26,14 @@ class AuthService {
   static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.110.5:5000';
   static const String emulatorUrl = 'http://10.0.2.2:5000';
   static const String localhostUrl = 'http://localhost:5000';
+  static const String loopbackUrl = 'http://127.0.0.1:5000';
+
+  static Set<String> get localCandidates => {
+        localhostUrl,
+        loopbackUrl,
+        baseUrl,
+        emulatorUrl,
+      };
 
   final LocalAuthentication _localAuth = LocalAuthentication();
 
@@ -88,46 +96,26 @@ class AuthService {
     final cleanEmail = email.trim().toLowerCase();
     final cleanName = name.trim();
 
+    if (password.length < 6) {
+      return {
+        'success': false,
+        'message': 'Kata sandi minimal 6 karakter.',
+      };
+    }
+
     bool localSuccess = false;
     bool onlineSuccess = false;
     String? token;
+    bool isNetworkOffline = false;
 
-    // 1. Simpan ke DATABASE LOKAL (Node.js REST API + PostgreSQL Lokal)
-    for (final url in [baseUrl, emulatorUrl, localhostUrl]) {
-      try {
-        final response = await http.post(
-          Uri.parse('$url/api/auth/register'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'full_name': cleanName,
-            'email': cleanEmail,
-            'password': password,
-          }),
-        ).timeout(const Duration(seconds: 3));
-
-        if (response.statusCode == 201) {
-          final data = jsonDecode(response.body);
-          token = data['token'];
-          localSuccess = true;
-          break;
-        } else if (response.statusCode == 409) {
-          // Jika email sudah terdaftar di database lokal
-          localSuccess = true;
-          break;
-        }
-      } catch (_) {
-        // Lanjutkan jika server lokal offline
-      }
-    }
-
-    // 2. Simpan ke DATABASE ONLINE (Supabase Cloud PostgreSQL)
+    // 1. Simpan ke DATABASE ONLINE (Supabase Cloud PostgreSQL)
     try {
       final client = Supabase.instance.client;
       final res = await client.auth.signUp(
         email: cleanEmail,
         password: password,
         data: {'full_name': cleanName},
-      );
+      ).timeout(const Duration(seconds: 8));
 
       if (res.user != null) {
         onlineSuccess = true;
@@ -142,8 +130,46 @@ class AuthService {
           await prefs.setString(_keyUserId, res.user!.id);
         } catch (_) {}
       }
-    } catch (_) {
-      // Lanjutkan jika supabase offline/koneksi lambat
+    } on AuthException catch (e) {
+      if (e.message.toLowerCase().contains('already registered') ||
+          e.message.toLowerCase().contains('user already exists')) {
+        return {
+          'success': false,
+          'message': 'Email "$cleanEmail" sudah terdaftar. Silakan langsung login.',
+        };
+      }
+    } on SocketException catch (_) {
+      isNetworkOffline = true;
+    } catch (e) {
+      final err = e.toString().toLowerCase();
+      if (err.contains('socket') || err.contains('network') || err.contains('failed host lookup') || err.contains('timeout')) {
+        isNetworkOffline = true;
+      }
+    }
+
+    // 2. Simpan ke DATABASE LOKAL (Node.js REST API + PostgreSQL Lokal - Cepat 1.2s)
+    for (final url in localCandidates) {
+      try {
+        final response = await http.post(
+          Uri.parse('$url/api/auth/register'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'full_name': cleanName,
+            'email': cleanEmail,
+            'password': password,
+          }),
+        ).timeout(const Duration(milliseconds: 1200));
+
+        if (response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+          token = data['token'];
+          localSuccess = true;
+          break;
+        } else if (response.statusCode == 409) {
+          localSuccess = true;
+          break;
+        }
+      } catch (_) {}
     }
 
     // 3. Simpan Sesi Pengguna ke Local Storage (Aktif & Siap Pakai)
@@ -156,11 +182,22 @@ class AuthService {
     await prefs.setBool(_keyIsLoggedIn, true);
     await prefs.setDouble(_keyUserWallet, 0.0);
 
+    String message = 'Pendaftaran berhasil! Akun Anda aktif di database.';
+    if (onlineSuccess && localSuccess) {
+      message = 'Pendaftaran berhasil! Tersimpan di Supabase Cloud & DB Lokal.';
+    } else if (onlineSuccess) {
+      message = 'Pendaftaran berhasil di Supabase Cloud!';
+    } else if (localSuccess) {
+      message = 'Pendaftaran berhasil di Database Lokal!';
+    } else if (isNetworkOffline) {
+      message = 'Pendaftaran offline berhasil! Akun disimpan di perangkat ini.';
+    }
+
     return {
       'success': true,
       'localSaved': localSuccess,
       'onlineSaved': onlineSuccess,
-      'message': 'Pendaftaran berhasil! Akun Anda aktif di database.',
+      'message': message,
     };
   }
 
@@ -172,47 +209,24 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final cleanEmail = email.trim().toLowerCase();
 
-    // 1. Coba verifikasi dengan DATABASE LOKAL (Node.js REST API + PostgreSQL)
-    for (final url in [baseUrl, emulatorUrl, localhostUrl]) {
-      try {
-        final response = await http.post(
-          Uri.parse('$url/api/auth/login'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'email': cleanEmail,
-            'password': password,
-          }),
-        ).timeout(const Duration(seconds: 3));
+    bool isNetworkOffline = false;
+    bool isCredentialWrong = false;
+    String? supabaseErrorMessage;
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (data['token'] != null) {
-            await prefs.setString(_keyJwtToken, data['token']);
-            if (data['user'] != null) {
-              await prefs.setString(_keyUserName, data['user']['full_name'] ?? 'Virtual Runner');
-              await prefs.setString(_keyUserEmail, data['user']['email'] ?? cleanEmail);
-            }
-            await prefs.setBool(_keyIsLoggedIn, true);
-            return {'success': true, 'source': 'local', 'message': 'Login berhasil (Database Lokal)!'};
-          }
-        }
-      } catch (_) {
-        // Fallback ke Supabase jika server lokal tidak aktif
-      }
-    }
-
-    // 2. Coba verifikasi dengan DATABASE ONLINE (Supabase Cloud)
+    // 1. Coba verifikasi dengan DATABASE ONLINE (Supabase Cloud) terlebih dahulu (langsung via internet publik)
     try {
       final client = Supabase.instance.client;
       final res = await client.auth.signInWithPassword(
         email: cleanEmail,
         password: password,
-      );
+      ).timeout(const Duration(seconds: 6));
 
       if (res.session != null && res.user != null) {
         await prefs.setBool(_keyIsLoggedIn, true);
         await prefs.setString(_keyUserEmail, cleanEmail);
         await prefs.setString(_keyUserId, res.user!.id);
+        // Simpan hash password sebagai cache offline terverifikasi
+        await prefs.setString(_keyPasswordHash, hashPassword(password));
         var name = res.user!.userMetadata?['full_name'] ?? prefs.getString(_keyUserName) ?? 'Virtual Runner';
         
         // Ambil profil & saldo akun asli dari database Supabase
@@ -233,24 +247,104 @@ class AuthService {
         } catch (_) {}
 
         await prefs.setString(_keyUserName, name);
-        return {'success': true, 'source': 'online', 'message': 'Login berhasil (Database Online Supabase)!'};
+        return {
+          'success': true,
+          'source': 'online',
+          'message': 'Login berhasil via Supabase Cloud!',
+        };
       }
-    } catch (_) {
-      // Fallback ke offline cache
+    } on AuthException catch (e) {
+      final msg = e.message.toLowerCase();
+      if (msg.contains('invalid login credentials') ||
+          msg.contains('invalid') ||
+          e.statusCode == '400') {
+        isCredentialWrong = true;
+      }
+      supabaseErrorMessage = e.message;
+    } on SocketException catch (_) {
+      isNetworkOffline = true;
+    } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('socket') || errStr.contains('network') || errStr.contains('failed host lookup') || errStr.contains('timeout')) {
+        isNetworkOffline = true;
+      } else {
+        supabaseErrorMessage = e.toString();
+      }
     }
 
-    // 3. Fallback Offline Cache: verifikasi dari hash kredensial yang pernah tersimpan
+    // 2. Coba verifikasi dengan DATABASE LOKAL (Node.js REST API + PostgreSQL - Timeout cepat 1.2 detik)
+    for (final url in localCandidates) {
+      try {
+        final response = await http.post(
+          Uri.parse('$url/api/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'email': cleanEmail,
+            'password': password,
+          }),
+        ).timeout(const Duration(milliseconds: 1200));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data['token'] != null) {
+            await prefs.setString(_keyJwtToken, data['token']);
+            if (data['user'] != null) {
+              await prefs.setString(_keyUserName, data['user']['full_name'] ?? 'Virtual Runner');
+              await prefs.setString(_keyUserEmail, data['user']['email'] ?? cleanEmail);
+            }
+            await prefs.setString(_keyPasswordHash, hashPassword(password));
+            await prefs.setBool(_keyIsLoggedIn, true);
+            return {'success': true, 'source': 'local', 'message': 'Login berhasil via Database Lokal!'};
+          }
+        } else if (response.statusCode == 401) {
+          isCredentialWrong = true;
+        }
+      } catch (_) {}
+    }
+
+    // 3. Fallback Offline Cache: verifikasi dari hash kredensial yang pernah tersimpan di perangkat
     final savedEmail = prefs.getString(_keyUserEmail);
     final savedHash = prefs.getString(_keyPasswordHash);
 
     if (savedEmail != null && savedEmail == cleanEmail && savedHash == hashPassword(password)) {
       await prefs.setBool(_keyIsLoggedIn, true);
-      return {'success': true, 'source': 'cache', 'message': 'Login berhasil (Mode Cache Offline)!'};
+      return {
+        'success': true,
+        'source': 'cache',
+        'message': 'Login berhasil (Mode Cache Offline). Server online tidak terjangkau.',
+      };
+    }
+
+    // 4. Diagnostik Error yang Informatif & Presisi
+    if (isNetworkOffline) {
+      if (savedEmail == null) {
+        return {
+          'success': false,
+          'message': 'Tidak ada koneksi internet dan belum ada akun tersimpan di perangkat ini.',
+        };
+      } else if (savedEmail == cleanEmail && savedHash != hashPassword(password)) {
+        return {
+          'success': false,
+          'message': 'Mode Offline: Kata sandi yang Anda masukkan tidak cocok dengan data lokal.',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Tidak ada koneksi internet. Akun "$cleanEmail" belum pernah login di perangkat ini.',
+        };
+      }
+    }
+
+    if (isCredentialWrong) {
+      return {
+        'success': false,
+        'message': 'Email atau kata sandi tidak cocok. Silakan periksa kembali.',
+      };
     }
 
     return {
       'success': false,
-      'message': 'Email atau password salah. Silakan periksa kembali akun Anda.',
+      'message': supabaseErrorMessage ?? 'Gagal masuk. Periksa kembali email, password, atau koneksi Anda.',
     };
   }
 
@@ -259,21 +353,22 @@ class AuthService {
     bool localConnected = false;
     bool onlineConnected = false;
 
-    // Cek Database Lokal
-    for (final url in [baseUrl, emulatorUrl, localhostUrl]) {
+    // Cek Database Lokal secara paralel (Cepat, max 1.2 detik)
+    final localFutures = localCandidates.map((url) async {
       try {
-        final res = await http.get(Uri.parse('$url/api/health')).timeout(const Duration(seconds: 2));
-        if (res.statusCode == 200) {
-          localConnected = true;
-          break;
-        }
-      } catch (_) {}
-    }
+        final res = await http.get(Uri.parse('$url/api/health')).timeout(const Duration(milliseconds: 1200));
+        return res.statusCode == 200;
+      } catch (_) {
+        return false;
+      }
+    });
+    final localResults = await Future.wait(localFutures);
+    localConnected = localResults.any((ok) => ok);
 
     // Cek Database Online (Supabase Cloud)
     try {
       final client = Supabase.instance.client;
-      await client.from('profiles').select().limit(1).timeout(const Duration(seconds: 2));
+      await client.from('profiles').select().limit(1).timeout(const Duration(milliseconds: 1500));
       onlineConnected = true;
     } catch (_) {
       // Jika session auth ready, anggap terhubung

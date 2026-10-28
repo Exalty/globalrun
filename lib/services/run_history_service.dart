@@ -173,6 +173,32 @@ class RunHistoryService {
   }
 
   /// Statistik karier dihitung dari riwayat lari akun yang aktif.
+    /// Menghitung streak hari lari berturut-turut dari user aktif
+  Future<int> computeStreakDays() async {
+    final all = await loadAll();
+    if (all.isEmpty) return 0;
+
+    final activeDates = <DateTime>{};
+    for (final r in all) {
+      activeDates.add(DateTime(r.startedAt.year, r.startedAt.month, r.startedAt.day));
+    }
+
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    if (!activeDates.contains(today) && !activeDates.contains(yesterday)) {
+      return 0;
+    }
+
+    var streak = 0;
+    var checkDate = activeDates.contains(today) ? today : yesterday;
+    while (activeDates.contains(checkDate)) {
+      streak++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
   Future<RunStats> computeStats() async {
     final all = await loadAll();
     var totalKm = 0.0;

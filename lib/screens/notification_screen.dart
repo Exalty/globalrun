@@ -112,13 +112,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'clear_all',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_sweep_rounded, color: DuoColors.heartRed, size: 18),
-                          SizedBox(width: 8),
-                          Text('Hapus Semua', style: TextStyle(color: DuoColors.heartRed, fontSize: 13, fontWeight: FontWeight.bold)),
+                          Icon(Icons.delete_sweep_rounded, color: palette.heartRed, size: 18),
+                          const SizedBox(width: 8),
+                          Text('Hapus Semua', style: TextStyle(color: palette.heartRed, fontSize: 13, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -195,8 +195,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     switch (notif.type) {
       case 'flag_off':
-        iconColor = DuoColors.streakGold;
-        iconShadow = DuoColors.streakGoldShadow;
+        iconColor = palette.streakGold;
+        iconShadow = palette.streakGoldShadow;
         iconData = Icons.sports_score_rounded;
         badgeText = 'FLAG-OFF';
         break;
@@ -207,8 +207,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         badgeText = 'MEDALI NFT';
         break;
       case 'ai_coach':
-        iconColor = DuoColors.questGreen;
-        iconShadow = DuoColors.questGreenShadow;
+        iconColor = palette.questGreen;
+        iconShadow = palette.questGreenShadow;
         iconData = Icons.psychology_rounded;
         badgeText = 'AI COACH';
         break;
@@ -491,11 +491,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: (event.type == 'run' ? palette.primaryBlue : DuoColors.streakGold)
+                        color: (event.type == 'run' ? palette.primaryBlue : palette.streakGold)
                             .withOpacity(palette.isDark ? 0.20 : 0.14),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: event.type == 'run' ? palette.primaryBlue : DuoColors.streakGold,
+                          color: event.type == 'run' ? palette.primaryBlue : palette.streakGold,
                           width: 1.5,
                         ),
                       ),
@@ -505,13 +505,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           Icon(
                             event.type == 'run' ? Icons.directions_run_rounded : Icons.directions_bike_rounded,
                             size: 15,
-                            color: event.type == 'run' ? palette.primaryBlue : DuoColors.streakGold,
+                            color: event.type == 'run' ? palette.primaryBlue : palette.streakGold,
                           ),
                           const SizedBox(width: 5),
                           Text(
                             event.type == 'run' ? 'MARATHON RUN' : 'CYCLING RACE',
                             style: TextStyle(
-                              color: event.type == 'run' ? palette.primaryBlue : DuoColors.streakGold,
+                              color: event.type == 'run' ? palette.primaryBlue : palette.streakGold,
                               fontWeight: FontWeight.w900,
                               fontSize: 11,
                               letterSpacing: 0.5,
@@ -555,7 +555,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded, color: DuoColors.streakGold, size: 16),
+                      Icon(Icons.location_on_rounded, color: palette.streakGold, size: 16),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
@@ -647,7 +647,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           const SizedBox(height: 4),
                           Text(
                             currencyService.formatCurrency(event.feeUsd, selectedCurrency),
-                            style: const TextStyle(color: DuoColors.questGreen, fontWeight: FontWeight.w900, fontSize: 15),
+                            style: TextStyle(color: palette.questGreen, fontWeight: FontWeight.w900, fontSize: 15),
                           ),
                         ],
                       ),
@@ -733,8 +733,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       icon: const Icon(Icons.public_rounded, size: 18),
                       label: const Text('Buka Website Resmi Lomba'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: DuoColors.streakGold,
-                        side: const BorderSide(color: DuoColors.streakGold, width: 1.5),
+                        foregroundColor: palette.streakGold,
+                        side: BorderSide(color: palette.streakGold, width: 1.5),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
@@ -908,7 +908,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               _notificationService.clearAll();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DuoColors.heartRed,
+              backgroundColor: palette.heartRed,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),

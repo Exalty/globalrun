@@ -58,9 +58,9 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
     if (res != null && res['success'] == true) {
       setState(_revalidate);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: DuoColors.questGreen,
-          content: Row(
+        SnackBar(
+          backgroundColor: palette.questGreen,
+          content: const Row(
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white),
               SizedBox(width: 8),
@@ -72,9 +72,9 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: DuoColors.heartRed,
-          content: Text('Gagal mencetak on-chain. Pastikan server backend aktif dan saldo wallet relayer mencukupi.'),
+        SnackBar(
+          backgroundColor: palette.heartRed,
+          content: const Text('Gagal mencetak on-chain. Pastikan server backend aktif dan saldo wallet relayer mencukupi.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -249,22 +249,22 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: DuoColors.questGreen.withOpacity(palette.isDark ? 0.2 : 0.1),
+                      color: palette.questGreen.withOpacity(palette.isDark ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: DuoColors.questGreen.withOpacity(0.4), width: 1.5),
+                      border: Border.all(color: palette.questGreen.withOpacity(0.4), width: 1.5),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.public_rounded, color: DuoColors.questGreen, size: 18),
+                        Icon(Icons.public_rounded, color: palette.questGreen, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'TERCATAT DI POLYGON AMOY TESTNET',
                                 style: TextStyle(
-                                  color: DuoColors.questGreen,
+                                  color: palette.questGreen,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 10,
                                 ),
@@ -288,8 +288,8 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                   DuoButton(
                     text: 'LIHAT DI POLYGONSCAN',
                     height: 48,
-                    backgroundColor: DuoColors.questGreen,
-                    shadowColor: DuoColors.questGreenShadow,
+                    backgroundColor: palette.questGreen,
+                    shadowColor: palette.questGreenShadow,
                     textColor: Colors.white,
                     icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 18),
                     onPressed: () {
@@ -303,10 +303,10 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                   DuoButton(
                     text: 'CETAK KE POLYGON ONLINE',
                     height: 48,
-                    backgroundColor: DuoColors.streakGold,
-                    shadowColor: DuoColors.streakGoldShadow,
-                    textColor: Colors.black,
-                    icon: const Icon(Icons.cloud_upload_rounded, color: Colors.black, size: 18),
+                    backgroundColor: palette.streakGold,
+                    shadowColor: palette.streakGoldShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.cloud_upload_rounded, color: Colors.white, size: 18),
                     onPressed: () {
                       Navigator.pop(context);
                       _mintBlockToPolygon(block);
@@ -564,9 +564,9 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isBroken
-                              ? DuoColors.heartRed
+                              ? palette.heartRed
                               : isHighlighted
-                                  ? Colors.amber
+                                  ? palette.streakGold
                                   : palette.surfaceBorder,
                           width: isHighlighted ? 2.5 : 2,
                         ),
@@ -649,19 +649,19 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                                               child: Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                 decoration: BoxDecoration(
-                                                  color: DuoColors.questGreen.withOpacity(0.18),
+                                                  color: palette.questGreen.withOpacity(palette.isDark ? 0.2 : 0.12),
                                                   borderRadius: BorderRadius.circular(6),
-                                                  border: Border.all(color: DuoColors.questGreen, width: 1),
+                                                  border: Border.all(color: palette.questGreen, width: 1),
                                                 ),
-                                                child: const Row(
+                                                child: Row(
                                                   mainAxisSize: MainAxisSize.min,
                                                   children: [
-                                                    Icon(Icons.public_rounded, color: DuoColors.questGreen, size: 11),
-                                                    SizedBox(width: 3),
+                                                    Icon(Icons.public_rounded, color: palette.questGreen, size: 11),
+                                                    const SizedBox(width: 3),
                                                     Text(
                                                       'Polygonscan',
                                                       style: TextStyle(
-                                                        color: DuoColors.questGreen,
+                                                        color: palette.questGreen,
                                                         fontSize: 9,
                                                         fontWeight: FontWeight.w900,
                                                       ),

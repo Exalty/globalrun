@@ -106,12 +106,12 @@ class FeedbackScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: index < 4
-                              ? DuoColors.streakGold.withOpacity(0.18)
+                              ? palette.streakGold.withOpacity(palette.isDark ? 0.2 : 0.14)
                               : palette.background,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: index < 4
-                                ? DuoColors.streakGold
+                                ? palette.streakGold
                                 : palette.surfaceBorder,
                             width: 2,
                           ),
@@ -121,7 +121,7 @@ class FeedbackScreen extends StatelessWidget {
                               ? Icons.star_rounded
                               : Icons.star_outline_rounded,
                           color: index < 4
-                              ? DuoColors.streakGold
+                              ? palette.streakGold
                               : palette.textMuted,
                           size: 30,
                         ),

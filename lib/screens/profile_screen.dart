@@ -27,6 +27,14 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  int _calculateAthleteLevel(double totalKm) {
+    if (totalKm >= 50.0) return 5;
+    if (totalKm >= 30.0) return 4;
+    if (totalKm >= 15.0) return 3;
+    if (totalKm >= 5.0) return 2;
+    return 1;
+  }
+
   final AuthService _authService = AuthService();
   final GlobalKey _biometricSectionKey = GlobalKey();
 
@@ -275,11 +283,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: DuoColors.streakGold.withOpacity(palette.isDark ? 0.2 : 0.12),
+                      color: palette.streakGold.withOpacity(palette.isDark ? 0.2 : 0.12),
                       shape: BoxShape.circle,
-                      border: Border.all(color: DuoColors.streakGold, width: 1.5),
+                      border: Border.all(color: palette.streakGold, width: 1.5),
                     ),
-                    child: const Icon(Icons.photo_library_rounded, color: DuoColors.streakGold, size: 22),
+                    child: Icon(Icons.photo_library_rounded, color: palette.streakGold, size: 22),
                   ),
                   title: Text(
                     'Pilih dari Galeri',
@@ -300,15 +308,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: DuoColors.heartRed.withOpacity(palette.isDark ? 0.2 : 0.12),
+                        color: palette.heartRed.withOpacity(palette.isDark ? 0.2 : 0.12),
                         shape: BoxShape.circle,
-                        border: Border.all(color: DuoColors.heartRed, width: 1.5),
+                        border: Border.all(color: palette.heartRed, width: 1.5),
                       ),
-                      child: const Icon(Icons.delete_outline_rounded, color: DuoColors.heartRed, size: 22),
+                      child: Icon(Icons.delete_outline_rounded, color: palette.heartRed, size: 22),
                     ),
-                    title: const Text(
+                    title: Text(
                       'Hapus Foto Profil',
-                      style: TextStyle(color: DuoColors.heartRed, fontWeight: FontWeight.w900, fontSize: 14),
+                      style: TextStyle(color: palette.heartRed, fontWeight: FontWeight.w900, fontSize: 14),
                     ),
                     subtitle: Text(
                       'Gunakan avatar default sistem',
@@ -689,23 +697,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       DuoChip(
-                        label: 'LEVEL 5 ATLET',
-                        borderColor: DuoColors.streakGoldShadow,
+                        label: 'LEVEL ${_calculateAthleteLevel(_stats.totalKm)} ATLET',
+                        borderColor: palette.streakGold.withOpacity(0.5),
                         backgroundColor: palette.background,
-                        textColor: DuoColors.streakGold,
+                        textColor: palette.streakGold,
                       ),
                       const SizedBox(width: 8),
                       // Chip Status Sidik Jari (Bisa diklik untuk mengarahkan ke menu sidik jari)
                       DuoChip(
                         icon: Icon(
                           _isBiometricActive ? Icons.fingerprint_rounded : Icons.lock_outline_rounded,
-                          color: _isBiometricActive ? DuoColors.questGreen : palette.textMuted,
+                          color: _isBiometricActive ? palette.questGreen : palette.textMuted,
                           size: 16,
                         ),
                         label: _isBiometricActive ? 'SIDIK JARI AKTIF' : 'SIDIK JARI MATI',
-                        borderColor: _isBiometricActive ? DuoColors.questGreenShadow : palette.surfaceBorder,
+                        borderColor: _isBiometricActive ? palette.questGreen.withOpacity(0.5) : palette.surfaceBorder,
                         backgroundColor: palette.background,
-                        textColor: _isBiometricActive ? DuoColors.questGreen : palette.textMuted,
+                        textColor: _isBiometricActive ? palette.questGreen : palette.textMuted,
                         onTap: _scrollToBiometricSetting,
                       ),
                     ],
@@ -768,7 +776,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Icon(Icons.account_balance_wallet_rounded, color: DuoColors.streakGold, size: 28),
+                      Icon(Icons.account_balance_wallet_rounded, color: palette.streakGold, size: 28),
                       const SizedBox(width: 10),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,10 +806,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   DuoButton(
                     text: 'TOP UP SALDO',
                     height: 46,
-                    backgroundColor: DuoColors.streakGold,
-                    shadowColor: DuoColors.streakGoldShadow,
-                    textColor: Colors.black,
-                    icon: const Icon(Icons.add_card_rounded, color: Colors.black, size: 20),
+                    backgroundColor: palette.streakGold,
+                    shadowColor: palette.streakGoldShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.add_card_rounded, color: Colors.white, size: 20),
                     onPressed: _openTopUp,
                   ),
                 ],
@@ -864,7 +872,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   Switch(
                     value: themeService.isDarkMode,
-                    activeColor: DuoColors.streakGold,
+                    activeColor: palette.streakGold,
                     inactiveThumbColor: palette.primaryBlue,
                     inactiveTrackColor: palette.primaryBlue.withOpacity(0.3),
                     onChanged: (bool isDark) {
@@ -920,7 +928,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 10,
                         height: 10,
                         decoration: BoxDecoration(
-                          color: currencyService.hasApiData ? DuoColors.questGreen : DuoColors.streakGold,
+                          color: currencyService.hasApiData ? palette.questGreen : palette.streakGold,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -987,7 +995,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
                         currencyService.getRateLabel(selectedCurrency),
-                        style: const TextStyle(color: DuoColors.questGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: palette.questGreen, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
 
@@ -1048,7 +1056,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
                         '${selectedTimezone.label} • ${timezoneService.getOffsetLabel(selectedTimezone)}',
-                        style: const TextStyle(color: DuoColors.questGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: palette.questGreen, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
 
@@ -1080,8 +1088,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             ? Icons.check_circle_rounded
                                             : Icons.warning_rounded,
                                         color: currencyService.hasApiData
-                                            ? DuoColors.questGreen
-                                            : DuoColors.streakGold,
+                                            ? palette.questGreen
+                                            : palette.streakGold,
                                         size: 18,
                                       ),
                                       const SizedBox(width: 8),
@@ -1196,7 +1204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 Text(
                                   _isBiometricActive ? 'Status: Aktif' : 'Status: Nonaktif',
                                   style: TextStyle(
-                                    color: _isBiometricActive ? DuoColors.questGreen : palette.textMuted,
+                                    color: _isBiometricActive ? palette.questGreen : palette.textMuted,
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -1249,7 +1257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Icons.route_rounded, palette.primaryBlue, palette,
                           onTap: _openRunHistory),
                       _buildStatColumn('Race Diikuti', '${_stats.raceCount} Acara',
-                          Icons.emoji_events_rounded, DuoColors.streakGold, palette,
+                          Icons.emoji_events_rounded, palette.streakGold, palette,
                           onTap: _openRunHistory),
                       _buildStatColumn('Medali NFT', '${_stats.medalCount} Dicetak',
                           Icons.military_tech_rounded, palette.neonCyan, palette,
@@ -1370,8 +1378,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               widget.onLogout();
             },
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: DuoColors.streakGold),
-              foregroundColor: DuoColors.streakGold,
+              side: BorderSide(color: palette.streakGold),
+              foregroundColor: palette.streakGold,
             ),
             child: const Text('Hapus & Reset', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
@@ -1381,7 +1389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               widget.onLogout();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: DuoColors.heartRed,
+              backgroundColor: palette.heartRed,
               foregroundColor: Colors.white,
             ),
             child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.w900)),

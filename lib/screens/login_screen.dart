@@ -53,13 +53,24 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  bool _isCheckingDb = false;
+
   Future<void> _checkDatabases() async {
-    final status = await _authService.checkDatabaseStatus();
-    if (mounted) {
-      setState(() {
-        _localDbConnected = status['local'] == true;
-        _onlineDbConnected = status['online'] == true;
-      });
+    if (_isCheckingDb) return;
+    setState(() => _isCheckingDb = true);
+    try {
+      final status = await _authService.checkDatabaseStatus();
+      if (mounted) {
+        setState(() {
+          _localDbConnected = status['local'] == true;
+          _onlineDbConnected = status['online'] == true;
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingDb = false);
+      }
     }
   }
 
@@ -108,6 +119,27 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (res['success'] == true) {
+          if (res['source'] == 'cache' && mounted) {
+            final palette = DuoColors.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.cloud_off_rounded, color: palette.streakGold, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        res['message'] ?? 'Login berhasil (Mode Cache Offline)',
+                        style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: palette.surface,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
           widget.onLoginSuccess();
         } else {
           setState(() => _errorMessage = res['message']);
@@ -128,6 +160,27 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (res['success'] == true) {
+          if (res['source'] == 'cache' && mounted) {
+            final palette = DuoColors.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.cloud_off_rounded, color: palette.streakGold, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        res['message'] ?? 'Login berhasil (Mode Cache Offline)',
+                        style: TextStyle(color: palette.textPrimary, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: palette.surface,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
           widget.onLoginSuccess();
         } else {
           setState(() => _errorMessage = res['message']);
@@ -252,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   _isRegisterMode
                       ? 'Daftarkan atlet baru dan mulai petualangan lari!'
                       : 'Masuk dan taklukkan leaderboard kompetisi!',
-                  style: const TextStyle(color: DuoColors.textSecondary, fontSize: 13),
+                  style: TextStyle(color: palette.textSecondary, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -382,7 +435,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            const Expanded(child: Divider(color: DuoColors.surfaceBorder, thickness: 1.5)),
+                            Expanded(child: Divider(color: palette.surfaceBorder, thickness: 1.5)),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               child: Text(
@@ -394,7 +447,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                             ),
-                            const Expanded(child: Divider(color: DuoColors.surfaceBorder, thickness: 1.5)),
+                            Expanded(child: Divider(color: palette.surfaceBorder, thickness: 1.5)),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -407,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           icon: Icon(
                             Icons.fingerprint_rounded,
-                            color: _isBiometricConfigured ? DuoColors.primaryBlue : DuoColors.textMuted,
+                            color: _isBiometricConfigured ? palette.primaryBlue : palette.textMuted,
                             size: 24,
                           ),
                           onPressed: _isLoading ? null : _handleBiometricLogin,
@@ -419,30 +472,49 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                // Indikator Dual Database Status (Lokal & Online)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: palette.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: palette.surfaceBorder, width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.storage_rounded,
-                        size: 15,
-                        color: palette.textMuted,
-                      ),
-                      const SizedBox(width: 8),
-                      _buildDbStatusDot(_localDbConnected, 'DB Lokal'),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('•', style: TextStyle(color: DuoColors.textMuted, fontSize: 12)),
-                      ),
-                      _buildDbStatusDot(_onlineDbConnected, 'DB Online (Supabase)'),
-                    ],
+                // Indikator Dual Database Status (Lokal & Online) - Bisa diklik untuk cek ulang
+                InkWell(
+                  onTap: _isCheckingDb ? null : _checkDatabases,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: palette.surfaceBorder, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _isCheckingDb
+                            ? SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: palette.primaryBlue,
+                                ),
+                              )
+                            : Icon(
+                                Icons.storage_rounded,
+                                size: 15,
+                                color: palette.textMuted,
+                              ),
+                        const SizedBox(width: 8),
+                        _buildDbStatusDot(_localDbConnected, 'DB Lokal', palette),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('•', style: TextStyle(color: palette.textMuted, fontSize: 12)),
+                        ),
+                        _buildDbStatusDot(_onlineDbConnected, 'DB Online (Supabase)', palette),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.refresh_rounded,
+                          size: 13,
+                          color: palette.textMuted.withOpacity(0.6),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -453,7 +525,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDbStatusDot(bool isOnline, String label) {
+  Widget _buildDbStatusDot(bool isOnline, String label, DuoColorPalette palette) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -462,10 +534,10 @@ class _LoginScreenState extends State<LoginScreen> {
           height: 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isOnline ? DuoColors.questGreen : DuoColors.streakGold,
+            color: isOnline ? palette.questGreen : palette.streakGold,
             boxShadow: [
               BoxShadow(
-                color: (isOnline ? DuoColors.questGreen : DuoColors.streakGold).withOpacity(0.5),
+                color: (isOnline ? palette.questGreen : palette.streakGold).withOpacity(0.3),
                 blurRadius: 4,
               ),
             ],
@@ -475,7 +547,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Text(
           label,
           style: TextStyle(
-            color: isOnline ? DuoColors.questGreen : DuoColors.textMuted,
+            color: isOnline ? palette.questGreen : palette.textMuted,
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
