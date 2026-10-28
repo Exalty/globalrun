@@ -37,11 +37,10 @@ class AuthService {
 
   static const MethodChannel _settingsChannel = MethodChannel('com.globalrun.app/settings');
 
-  // Base URL backend Node.js REST API (Database Lokal PostgreSQL)
+  // Base URL backend Node.js REST API (Vercel Cloud Serverless)
   static String get baseUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.110.5:5000';
   static String get cloudTunnelUrl =>
-      dotenv.env['PUBLIC_TUNNEL_URL'] ??
-      'https://success-coordination-metallic-cleaner.trycloudflare.com';
+      dotenv.env['PUBLIC_TUNNEL_URL'] ?? 'https://globalrun.vercel.app';
   static const String emulatorUrl = 'http://10.0.2.2:5000';
   static const String localhostUrl = 'http://localhost:5000';
   static const String loopbackUrl = 'http://127.0.0.1:5000';
