@@ -202,7 +202,7 @@ class RunSummaryScreen extends StatelessWidget {
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.runcompete.virtualrace',
+          userAgentPackageName: 'com.globalrun.virtualrace',
         ),
         if (hasRoute)
           PolylineLayer(

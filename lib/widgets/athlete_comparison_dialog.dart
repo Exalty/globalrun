@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/race_standing_model.dart';
+import '../models/race_standing.dart';
 import '../theme/duo_theme.dart';
 
 class AthleteComparisonDialog extends StatelessWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/race_standing_model.dart';
+import '../models/race_standing.dart';
 import '../models/run_record.dart';
 import '../services/leaderboard_service.dart';
 import '../theme/duo_theme.dart';

@@ -54,8 +54,8 @@ class AiCoachService {
 
   /// Urutan model yang dicoba secara bertingkat
   static const List<String> _candidateModels = [
-    'gemini-flash-latest',
     'gemini-flash-lite-latest',
+    'gemini-flash-latest',
     'gemini-pro-latest',
   ];
 

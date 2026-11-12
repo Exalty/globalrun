@@ -1,6 +1,6 @@
 {
-    "name": "runcompete",
-    "short_name": "runcompete",
+    "name": "GlobalRun",
+    "short_name": "GlobalRun",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
