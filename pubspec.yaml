@@ -50,6 +50,9 @@ dependencies:
   supabase_flutter: ^2.18.3
   flutter_compass: ^0.8.1
   image_picker: ^1.2.4
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^7.5.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

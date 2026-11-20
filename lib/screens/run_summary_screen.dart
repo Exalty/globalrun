@@ -8,6 +8,7 @@ import '../models/run_record.dart';
 import '../services/blockchain_service.dart';
 import '../theme/duo_theme.dart';
 import 'blockchain_certificate_screen.dart';
+import 'finisher_certificate_screen.dart';
 
 /// Ringkasan lari ala Strava: peta rute (fit ke seluruh jejak), statistik, split per KM.
 class RunSummaryScreen extends StatelessWidget {
@@ -149,6 +150,24 @@ class RunSummaryScreen extends StatelessWidget {
                 ],
                 const SizedBox(height: 20),
                 if (medal != null && blockchainService != null) ...[
+                  DuoButton(
+                    text: '📜 DOKUMEN PIAGAM RESMI',
+                    height: 48,
+                    backgroundColor: palette.streakGold,
+                    shadowColor: palette.streakGoldShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FinisherCertificateScreen(
+                          block: medal,
+                          blockchainService: blockchainService,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   DuoButton(
                     text: 'BUKA MEDALI NFT',
                     height: 48,

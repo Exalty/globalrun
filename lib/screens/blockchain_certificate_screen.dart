@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../models/blockchain_record.dart';
 import '../services/blockchain_service.dart';
 import '../theme/duo_theme.dart';
+import 'finisher_certificate_screen.dart';
+import 'certificate_scanner_screen.dart';
 
 class BlockchainCertificateScreen extends StatefulWidget {
   final BlockchainService blockchainService;
@@ -306,6 +308,27 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                   ),
                   const SizedBox(height: 12),
                   DuoButton(
+                    text: '📜 LIHAT DOKUMEN PIAGAM',
+                    height: 48,
+                    backgroundColor: palette.streakGold,
+                    shadowColor: palette.streakGoldShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FinisherCertificateScreen(
+                            block: block,
+                            blockchainService: widget.blockchainService,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  DuoButton(
                     text: 'LIHAT DI POLYGONSCAN',
                     height: 48,
                     backgroundColor: palette.questGreen,
@@ -453,6 +476,20 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
         elevation: 0,
         shape: Border(bottom: BorderSide(color: palette.surfaceBorder, width: 2)),
         actions: [
+          IconButton(
+            icon: Icon(Icons.qr_code_scanner_rounded, color: palette.questGreen),
+            tooltip: 'Pindai Sertifikat Fisik',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CertificateScannerScreen(
+                    blockchainService: widget.blockchainService,
+                  ),
+                ),
+              );
+            },
+          ),
           if (medalCount > 0)
             IconButton(
               icon: Icon(Icons.delete_sweep_rounded, color: palette.textPrimary),
