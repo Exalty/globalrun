@@ -13,9 +13,18 @@ class EventService extends ChangeNotifier {
   static const String _emulatorUrl = 'http://10.0.2.2:5000';
   static const String _localUrl = 'http://localhost:5000';
 
-  // Endpoint API Publik Resmi RunSignup (Global Running Race Directory)
-  static const String _runSignupApiUrl =
-      'https://runsignup.com/Rest/races?format=json&results_per_page=12&search_start_date=today&event_type=running_race';
+  // Endpoint API Publik Resmi RunSignup dengan filter rentang lomba (maksimal 3 hari lampau s/d 90 hari mendatang)
+  static String _buildRunSignupApiUrl() {
+    final now = DateTime.now().toUtc();
+    final threeDaysAgo = now.subtract(const Duration(days: 3));
+    final startStr =
+        '${threeDaysAgo.year}-${threeDaysAgo.month.toString().padLeft(2, '0')}-${threeDaysAgo.day.toString().padLeft(2, '0')}';
+    final ninetyDaysLater = now.add(const Duration(days: 90));
+    final endStr =
+        '${ninetyDaysLater.year}-${ninetyDaysLater.month.toString().padLeft(2, '0')}-${ninetyDaysLater.day.toString().padLeft(2, '0')}';
+
+    return 'https://runsignup.com/Rest/races?format=json&results_per_page=16&start_date=$startStr&end_date=$endStr&event_type=running_race';
+  }
 
   static const String _cacheKey = 'cached_race_events_json';
 
@@ -101,7 +110,7 @@ class EventService extends ChangeNotifier {
     // 2. Jika backend offline/tertutup, ambil LANGSUNG dari RunSignup Open REST API (Live Feed Global)
     if (!success) {
       try {
-        final uri = Uri.parse(_runSignupApiUrl);
+        final uri = Uri.parse(_buildRunSignupApiUrl());
         final response = await http.get(uri).timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
@@ -112,10 +121,14 @@ class EventService extends ChangeNotifier {
                 .map((item) => RaceEvent.fromRunSignup(item as Map<String, dynamic>))
                 .toList();
 
+            final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 3));
+            // Filter hanya lomba yang belum lewat, atau baru lewat maksimal 3 hari
+            final validLiveRaces = liveRaces.where((r) => !r.startTimeUtc.isBefore(cutoff)).toList();
+
             // Gabungkan dengan lomba utama terkurasi (Tokyo, Maybank Bali, Borobudur)
             final combined = <RaceEvent>[];
-            combined.addAll(RaceEvent.sampleEvents());
-            for (final live in liveRaces) {
+            combined.addAll(RaceEvent.sampleEvents().where((s) => !s.startTimeUtc.isBefore(cutoff)));
+            for (final live in validLiveRaces) {
               if (!combined.any((c) => c.title.toLowerCase() == live.title.toLowerCase())) {
                 combined.add(live);
               }

@@ -244,7 +244,8 @@ class TimezoneService extends ChangeNotifier {
       final abs = diff.abs();
       if (abs.inMinutes < 60) return 'Dimulai ${abs.inMinutes} mnt lalu';
       if (abs.inHours < 24) return 'Dimulai ${abs.inHours} jam lalu';
-      return 'Event Sedang Berlangsung / Selesai';
+      if (abs.inDays <= 3) return 'Selesai ${abs.inDays} hari lalu';
+      return 'Event Selesai';
     }
 
     if (diff.inDays > 0) {

@@ -96,8 +96,11 @@ class RaceEvent {
 
     DateTime startUtc = DateTime.now().toUtc().add(const Duration(days: 2));
     final nextDate = r['next_date']?.toString();
-    if (nextDate != null && nextDate.isNotEmpty) {
-      final parts = nextDate.split('/');
+    final lastDate = r['last_date']?.toString();
+    final dateStr = (nextDate != null && nextDate.isNotEmpty) ? nextDate : lastDate;
+
+    if (dateStr != null && dateStr.isNotEmpty) {
+      final parts = dateStr.split('/');
       if (parts.length == 3) {
         final month = int.tryParse(parts[0]) ?? 1;
         final day = int.tryParse(parts[1]) ?? 1;

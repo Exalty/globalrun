@@ -110,7 +110,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<RaceEvent> _getFilteredEvents(List<RaceEvent> allEvents) {
-    return allEvents.where((e) {
+    final now = DateTime.now().toUtc();
+    final cutoff = now.subtract(const Duration(days: 3));
+
+    // 1. Filter: sembunyikan event yang sudah lewat lebih dari 3 hari, dan cocokkan pencarian/kategori
+    final filtered = allEvents.where((e) {
+      if (e.startTimeUtc.isBefore(cutoff)) {
+        return false;
+      }
       final query = _searchQuery.toLowerCase();
       final matchesQuery = e.title.toLowerCase().contains(query) ||
           e.description.toLowerCase().contains(query) ||
@@ -118,6 +125,26 @@ class _HomeScreenState extends State<HomeScreen> {
       final matchesCategory = _selectedCategory == 'all' || e.type == _selectedCategory;
       return matchesQuery && matchesCategory;
     }).toList();
+
+    // 2. Sorting kronologis: lomba paling dekat & siap diikuti pelari selalu di posisi teratas
+    filtered.sort((a, b) {
+      final aIsPast = a.startTimeUtc.isBefore(now);
+      final bIsPast = b.startTimeUtc.isBefore(now);
+
+      // Prioritaskan lomba mendatang dibanding lomba yang sudah selesai
+      if (!aIsPast && bIsPast) return -1;
+      if (aIsPast && !bIsPast) return 1;
+
+      // Jika sama-sama mendatang: urutkan dari waktu terdekat (Ascending)
+      if (!aIsPast && !bIsPast) {
+        return a.startTimeUtc.compareTo(b.startTimeUtc);
+      }
+
+      // Jika sama-sama baru selesai (maksimal 3 hari): urutkan yang paling baru selesai (Descending)
+      return b.startTimeUtc.compareTo(a.startTimeUtc);
+    });
+
+    return filtered;
   }
 
   @override
