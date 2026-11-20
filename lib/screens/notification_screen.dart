@@ -150,8 +150,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final filters = [
       {'key': 'all', 'label': 'SEMUA', 'icon': Icons.notifications_rounded},
       {'key': 'race', 'label': 'RACE & FLAG-OFF', 'icon': Icons.directions_run_rounded},
-      {'key': 'ai_coach', 'label': 'AI COACH', 'icon': Icons.psychology_rounded},
-      {'key': 'achievement', 'label': 'MEDALI NFT', 'icon': Icons.military_tech_rounded},
+      {'key': 'ai_coach', 'label': 'AI COACH', 'icon': Icons.auto_awesome_rounded},
+      {'key': 'achievement', 'label': 'MEDALI NFT', 'icon': Icons.emoji_events_rounded},
     ];
 
     return SingleChildScrollView(
@@ -189,39 +189,33 @@ class _NotificationScreenState extends State<NotificationScreen> {
     DuoColorPalette palette,
   ) {
     Color iconColor;
-    Color iconShadow;
     IconData iconData;
     String badgeText;
 
     switch (notif.type) {
       case 'flag_off':
         iconColor = palette.streakGold;
-        iconShadow = palette.streakGoldShadow;
-        iconData = Icons.sports_score_rounded;
+        iconData = Icons.flag_circle_rounded;
         badgeText = 'FLAG-OFF';
         break;
       case 'achievement':
-        iconColor = palette.neonCyan;
-        iconShadow = palette.neonCyanShadow;
-        iconData = Icons.military_tech_rounded;
+        iconColor = palette.streakGold;
+        iconData = Icons.emoji_events_rounded;
         badgeText = 'MEDALI NFT';
         break;
       case 'ai_coach':
         iconColor = palette.questGreen;
-        iconShadow = palette.questGreenShadow;
-        iconData = Icons.psychology_rounded;
+        iconData = Icons.auto_awesome_rounded;
         badgeText = 'AI COACH';
         break;
       case 'race_reminder':
         iconColor = palette.primaryBlue;
-        iconShadow = palette.primaryBlueShadow;
-        iconData = Icons.alarm_rounded;
+        iconData = Icons.event_available_rounded;
         badgeText = 'JADWAL LIVE';
         break;
       default:
         iconColor = palette.primaryBlue;
-        iconShadow = palette.primaryBlueShadow;
-        iconData = Icons.info_outline_rounded;
+        iconData = Icons.notifications_active_rounded;
         badgeText = 'SISTEM';
         break;
     }
@@ -236,22 +230,33 @@ class _NotificationScreenState extends State<NotificationScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 3D Avatar/Icon container
+            // Simbol Avatar/Icon sirkular yang proporsional, halus, dan harmonis
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(palette.isDark ? 0.20 : 0.14),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: iconColor, width: 1.5),
+                shape: BoxShape.circle,
+                color: iconColor.withOpacity(palette.isDark ? 0.22 : 0.12),
+                border: Border.all(
+                  color: iconColor.withOpacity(palette.isDark ? 0.6 : 0.45),
+                  width: 1.8,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: iconShadow.withOpacity(0.4),
-                    offset: const Offset(0, 3),
-                    blurRadius: 0,
+                    color: iconColor.withOpacity(0.12),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: Icon(iconData, color: iconColor, size: 22),
+              child: Center(
+                child: Icon(
+                  iconData,
+                  color: iconColor,
+                  size: 22,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
 
