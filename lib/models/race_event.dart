@@ -70,6 +70,99 @@ class RaceEvent {
     );
   }
 
+  factory RaceEvent.fromRunSignup(Map<String, dynamic> json) {
+    final r = json['race'] as Map<String, dynamic>? ?? json;
+    final name = _cleanHtml(r['name']?.toString() ?? 'Virtual Global Race');
+    final desc = _cleanHtml(r['description']?.toString() ?? '');
+
+    final text = '$name $desc'.toLowerCase();
+    String type = 'run';
+    double dist = 5.0;
+
+    if (text.contains('cycling') || text.contains('bike') || text.contains('ride') || text.contains('tour de')) {
+      type = 'cycling';
+      dist = text.contains('century') ? 50.0 : 30.0;
+    } else if (text.contains('half marathon') || text.contains('half-marathon') || text.contains('21k') || text.contains('21.1')) {
+      dist = 21.1;
+    } else if (text.contains('marathon') || text.contains('42k') || text.contains('42.2')) {
+      dist = 42.2;
+    } else if (text.contains('10k') || text.contains('10 mile') || text.contains('10-k')) {
+      dist = 10.0;
+    } else if (text.contains('5k') || text.contains('5-k')) {
+      dist = 5.0;
+    } else if (text.contains('1 mile') || text.contains('fun run')) {
+      dist = 3.0;
+    }
+
+    DateTime startUtc = DateTime.now().toUtc().add(const Duration(days: 2));
+    final nextDate = r['next_date']?.toString();
+    if (nextDate != null && nextDate.isNotEmpty) {
+      final parts = nextDate.split('/');
+      if (parts.length == 3) {
+        final month = int.tryParse(parts[0]) ?? 1;
+        final day = int.tryParse(parts[1]) ?? 1;
+        final year = int.tryParse(parts[2]) ?? DateTime.now().year;
+        startUtc = DateTime.utc(year, month, day, 7, 0, 0);
+      }
+    }
+
+    String loc = 'Global Venue';
+    final addr = r['address'];
+    if (addr is Map<String, dynamic>) {
+      final city = addr['city']?.toString();
+      final state = addr['state']?.toString();
+      final country = addr['country_code']?.toString() ?? 'US';
+      final parts = [city, state, country].where((s) => s != null && s.isNotEmpty).toList();
+      if (parts.isNotEmpty) {
+        loc = parts.join(', ');
+      }
+    }
+
+    final double fee = dist >= 42.0 ? 25.0 : dist >= 21.0 ? 18.0 : dist >= 10.0 ? 12.0 : 8.0;
+    final String raceId = r['race_id']?.toString() ?? 'rs-${DateTime.now().millisecondsSinceEpoch}';
+
+    return RaceEvent(
+      id: 'rs-$raceId',
+      title: name,
+      description: desc.isNotEmpty ? (desc.length > 200 ? '${desc.substring(0, 200)}...' : desc) : 'Lomba resmi terdaftar di platform global RunSignup.',
+      type: type,
+      distanceKm: dist,
+      startTimeUtc: startUtc,
+      feeUsd: fee,
+      bannerUrl: name,
+      officialUrl: r['url']?.toString() ?? 'https://runsignup.com',
+      location: loc,
+      isLiveExternal: true,
+    );
+  }
+
+  static String _cleanHtml(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&quot;', '"')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'type': type,
+        'distance_km': distanceKm,
+        'start_time_utc': startTimeUtc.toIso8601String(),
+        'fee_usd': feeUsd,
+        'banner_url': bannerUrl,
+        'official_url': officialUrl,
+        'location': location,
+        'is_live_external': isLiveExternal,
+      };
+
   static List<RaceEvent> sampleEvents() {
     final now = DateTime.now().toUtc();
     return [

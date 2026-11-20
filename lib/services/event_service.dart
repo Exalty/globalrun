@@ -8,9 +8,14 @@ import '../models/race_event.dart';
 
 class EventService extends ChangeNotifier {
   // URLs for physical device, emulator, and localhost
+  static String get _cloudUrl => dotenv.env['PUBLIC_TUNNEL_URL'] ?? 'https://globalrun.vercel.app';
   static String get _primaryUrl => dotenv.env['API_BASE_URL'] ?? 'http://192.168.110.5:5000';
   static const String _emulatorUrl = 'http://10.0.2.2:5000';
   static const String _localUrl = 'http://localhost:5000';
+
+  // Endpoint API Publik Resmi RunSignup (Global Running Race Directory)
+  static const String _runSignupApiUrl =
+      'https://runsignup.com/Rest/races?format=json&results_per_page=12&search_start_date=today&event_type=running_race';
 
   static const String _cacheKey = 'cached_race_events_json';
 
@@ -58,6 +63,7 @@ class EventService extends ChangeNotifier {
     _safeNotifyListeners();
 
     final urlsToTry = [
+      _cloudUrl,
       _primaryUrl,
       _emulatorUrl,
       _localUrl,
@@ -65,6 +71,7 @@ class EventService extends ChangeNotifier {
 
     bool success = false;
 
+    // 1. Coba ambil dari Backend REST API (Vercel Cloud atau Server Lokal)
     for (final base in urlsToTry) {
       try {
         final uri = Uri.parse('$base/api/events${forceRefresh ? '?refresh=true' : ''}');
@@ -91,7 +98,46 @@ class EventService extends ChangeNotifier {
       }
     }
 
-    // Coba ambil langsung dari database Supabase Cloud (tabel race_events)
+    // 2. Jika backend offline/tertutup, ambil LANGSUNG dari RunSignup Open REST API (Live Feed Global)
+    if (!success) {
+      try {
+        final uri = Uri.parse(_runSignupApiUrl);
+        final response = await http.get(uri).timeout(const Duration(seconds: 5));
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (data is Map<String, dynamic> && data['races'] is List) {
+            final List<dynamic> raceList = data['races'];
+            final liveRaces = raceList
+                .map((item) => RaceEvent.fromRunSignup(item as Map<String, dynamic>))
+                .toList();
+
+            // Gabungkan dengan lomba utama terkurasi (Tokyo, Maybank Bali, Borobudur)
+            final combined = <RaceEvent>[];
+            combined.addAll(RaceEvent.sampleEvents());
+            for (final live in liveRaces) {
+              if (!combined.any((c) => c.title.toLowerCase() == live.title.toLowerCase())) {
+                combined.add(live);
+              }
+            }
+
+            _events = combined;
+            _isLiveFromBackend = true;
+            _errorMessage = null;
+            success = true;
+
+            // Simpan cache lokal
+            final prefs = await SharedPreferences.getInstance();
+            final cachedData = _events.map((e) => e.toJson()).toList();
+            await prefs.setString(_cacheKey, jsonEncode(cachedData));
+          }
+        }
+      } catch (e) {
+        debugPrint('[EventService] RunSignup Direct API fetch error: $e');
+      }
+    }
+
+    // 3. Coba ambil dari database Supabase Cloud (tabel race_events) jika API eksternal gagal
     if (!success) {
       try {
         final client = Supabase.instance.client;

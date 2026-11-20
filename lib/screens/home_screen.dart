@@ -388,21 +388,53 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: palette.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: palette.surfaceBorder),
-                      ),
-                      child: Text(
-                        '${event.distanceKm} KM',
-                        style: TextStyle(
-                          color: palette.textPrimary,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (event.id.startsWith('rs-') || event.isLiveExternal) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: palette.questGreen.withOpacity(palette.isDark ? 0.20 : 0.14),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: palette.questGreen, width: 1.2),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.public_rounded, size: 13, color: palette.questGreen),
+                                const SizedBox(width: 4),
+                                Text(
+                                  event.id.startsWith('rs-') ? 'LIVE RUNSIGNUP' : 'OFFICIAL RACE',
+                                  style: TextStyle(
+                                    color: palette.questGreen,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 9.5,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: palette.background,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: palette.surfaceBorder),
+                          ),
+                          child: Text(
+                            '${event.distanceKm} KM',
+                            style: TextStyle(
+                              color: palette.textPrimary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
