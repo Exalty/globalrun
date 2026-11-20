@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/blockchain_record.dart';
+import '../utils/human_error.dart';
 import 'auth_service.dart';
 
 class BlockchainService {
@@ -313,7 +314,7 @@ class BlockchainService {
           }
         }
       } catch (e) {
-        lastErr = e.toString();
+        lastErr = HumanError.toMessage(e, defaultMessage: 'Server backend tidak dapat dijangkau.');
         debugPrint('[BlockchainService] mintToPolygonOnline error on $base: $e');
       }
     }

@@ -6,6 +6,7 @@ import '../services/blockchain_service.dart';
 import '../theme/duo_theme.dart';
 import 'finisher_certificate_screen.dart';
 import 'certificate_scanner_screen.dart';
+import '../utils/human_error.dart';
 
 class BlockchainCertificateScreen extends StatefulWidget {
   final BlockchainService blockchainService;
@@ -84,7 +85,10 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
       } else if (rawErr.contains('TimeoutException')) {
         friendlyMsg = 'Koneksi ke Polygon RPC timeout saat menunggu blok. Coba beberapa saat lagi.';
       } else if (rawErr.isNotEmpty) {
-        friendlyMsg = 'Gagal: $rawErr';
+        friendlyMsg = HumanError.toMessage(
+          rawErr,
+          defaultMessage: 'Gagal mencatat transaksi ke jaringan blockchain. Pastikan koneksi internet stabil.',
+        );
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -354,7 +358,7 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 backgroundColor: palette.heartRed,
-                                content: Text('Gagal membuka Polygonscan: $e'),
+                                content: Text(HumanError.toMessage(e, defaultMessage: 'Tidak dapat membuka penjelajah transaksi Polygonscan.')),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );

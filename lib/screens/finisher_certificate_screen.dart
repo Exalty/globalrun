@@ -10,6 +10,7 @@ import '../models/blockchain_record.dart';
 import '../services/blockchain_service.dart';
 import '../theme/duo_theme.dart';
 import 'certificate_scanner_screen.dart';
+import '../utils/human_error.dart';
 
 class FinisherCertificateScreen extends StatefulWidget {
   final Block block;
@@ -123,7 +124,10 @@ class _FinisherCertificateScreenState extends State<FinisherCertificateScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: palette.heartRed,
-          content: Text('Gagal menyimpan sertifikat: $e'),
+          content: Text(HumanError.toMessage(
+            e,
+            defaultMessage: 'Gagal menyimpan piagam. Pastikan izin penyimpanan aktif dan memori HP mencukupi.',
+          )),
           behavior: SnackBarBehavior.floating,
         ),
       );

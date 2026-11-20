@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/duo_theme.dart';
+import '../utils/human_error.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -142,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
           }
           widget.onLoginSuccess();
         } else {
-          setState(() => _errorMessage = res['message']);
+          setState(() => _errorMessage = HumanError.toMessage(res['message']));
         }
       } else {
         // Login Langsung
@@ -183,11 +184,11 @@ class _LoginScreenState extends State<LoginScreen> {
           }
           widget.onLoginSuccess();
         } else {
-          setState(() => _errorMessage = res['message']);
+          setState(() => _errorMessage = HumanError.toMessage(res['message']));
         }
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Terjadi kesalahan: $e');
+      setState(() => _errorMessage = HumanError.toMessage(e));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -215,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _errorMessage = 'Pemindaian sidik jari dibatalkan atau gagal.');
       }
     } catch (e) {
-      setState(() => _errorMessage = 'Kesalahan sensor biometrik: $e');
+      setState(() => _errorMessage = HumanError.toMessage(e, defaultMessage: 'Sensor sidik jari tidak merespons.'));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

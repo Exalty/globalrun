@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../utils/human_error.dart';
 
 
 class BiometricAuthResult {
@@ -124,28 +125,16 @@ class AuthService {
       }
     } on PlatformException catch (e) {
       debugPrint('Biometric PlatformException: ${e.code} - ${e.message}');
-      if (e.code == 'NotEnrolled') {
-        return const BiometricAuthResult(
-          success: false,
-          notEnrolled: true,
-          errorMessage: 'Belum ada sidik jari yang didaftarkan di Pengaturan HP Anda.',
-        );
-      } else if (e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut') {
-        return const BiometricAuthResult(
-          success: false,
-          lockedOut: true,
-          errorMessage: 'Sensor sidik jari terkunci sementara karena terlalu banyak percobaan salah. Coba lagi dalam 30 detik.',
-        );
-      } else {
-        return BiometricAuthResult(
-          success: false,
-          errorMessage: 'Sensor sidik jari gagal: ${e.message ?? e.code}',
-        );
-      }
+      return BiometricAuthResult(
+        success: false,
+        notEnrolled: e.code == 'NotEnrolled',
+        lockedOut: e.code == 'LockedOut' || e.code == 'PermanentlyLockedOut',
+        errorMessage: HumanError.toMessage(e),
+      );
     } catch (e) {
       return BiometricAuthResult(
         success: false,
-        errorMessage: 'Terjadi kendala sensor sidik jari: $e',
+        errorMessage: HumanError.toMessage(e, defaultMessage: 'Sensor sidik jari tidak merespons.'),
       );
     }
   }
@@ -202,11 +191,13 @@ class AuthService {
           'message': 'Email "$cleanEmail" sudah terdaftar. Silakan langsung login.',
         };
       }
+      if (HumanError.isOfflineOrMaintenance(e)) {
+        isNetworkOffline = true;
+      }
     } on SocketException catch (_) {
       isNetworkOffline = true;
     } catch (e) {
-      final err = e.toString().toLowerCase();
-      if (err.contains('socket') || err.contains('network') || err.contains('failed host lookup') || err.contains('timeout')) {
+      if (HumanError.isOfflineOrMaintenance(e)) {
         isNetworkOffline = true;
       }
     }
@@ -323,16 +314,18 @@ class AuthService {
           msg.contains('invalid') ||
           e.statusCode == '400') {
         isCredentialWrong = true;
+      } else if (HumanError.isOfflineOrMaintenance(e)) {
+        isNetworkOffline = true;
+      } else {
+        supabaseErrorMessage = HumanError.toMessage(e);
       }
-      supabaseErrorMessage = e.message;
     } on SocketException catch (_) {
       isNetworkOffline = true;
     } catch (e) {
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('socket') || errStr.contains('network') || errStr.contains('failed host lookup') || errStr.contains('timeout')) {
+      if (HumanError.isOfflineOrMaintenance(e)) {
         isNetworkOffline = true;
       } else {
-        supabaseErrorMessage = e.toString();
+        supabaseErrorMessage = HumanError.toMessage(e);
       }
     }
 
@@ -379,22 +372,22 @@ class AuthService {
       };
     }
 
-    // 4. Diagnostik Error yang Informatif & Presisi
+    // 4. Diagnostik Error yang Informatif & Presisi (Bahasa Manusia)
     if (isNetworkOffline) {
       if (savedEmail == null) {
         return {
           'success': false,
-          'message': 'Tidak ada koneksi internet dan belum ada akun tersimpan di perangkat ini.',
+          'message': 'Server database sedang tidak dapat dijangkau (offline / pemeliharaan). Pastikan internet aktif atau daftarkan akun baru.',
         };
       } else if (savedEmail == cleanEmail && savedHash != hashPassword(password)) {
         return {
           'success': false,
-          'message': 'Mode Offline: Kata sandi yang Anda masukkan tidak cocok dengan data lokal.',
+          'message': 'Mode Offline: Kata sandi yang Anda masukkan tidak cocok dengan data akun lokal.',
         };
       } else {
         return {
           'success': false,
-          'message': 'Tidak ada koneksi internet. Akun "$cleanEmail" belum pernah login di perangkat ini.',
+          'message': 'Koneksi ke server terputus. Akun "$cleanEmail" belum pernah masuk di perangkat ini untuk menggunakan Mode Offline.',
         };
       }
     }
@@ -408,7 +401,9 @@ class AuthService {
 
     return {
       'success': false,
-      'message': supabaseErrorMessage ?? 'Gagal masuk. Periksa kembali email, password, atau koneksi Anda.',
+      'message': supabaseErrorMessage != null
+          ? HumanError.toMessage(supabaseErrorMessage)
+          : 'Gagal masuk. Periksa kembali email, kata sandi, atau koneksi internet Anda.',
     };
   }
 

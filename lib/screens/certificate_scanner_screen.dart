@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/blockchain_record.dart';
 import '../services/blockchain_service.dart';
 import '../theme/duo_theme.dart';
+import '../utils/human_error.dart';
 
 class CertificateScannerScreen extends StatefulWidget {
   final BlockchainService? blockchainService;
@@ -83,7 +84,10 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: palette.heartRed,
-            content: Text('Gagal menganalisis foto: $e'),
+            content: Text(HumanError.toMessage(
+              e,
+              defaultMessage: 'Tidak dapat menganalisis gambar. Pastikan foto piagam jelas dan tidak buram.',
+            )),
             behavior: SnackBarBehavior.floating,
           ),
         );

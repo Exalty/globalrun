@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/payment_service.dart';
 import '../theme/duo_theme.dart';
+import '../utils/human_error.dart';
 
 class _PayMethod {
   final String id;
@@ -104,7 +105,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
       final palette = DuoColors.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Top up gagal: $e'),
+          content: Text(HumanError.toMessage(e, defaultMessage: 'Gagal memproses transaksi isi saldo.')),
           backgroundColor: palette.heartRed,
           behavior: SnackBarBehavior.floating,
         ),

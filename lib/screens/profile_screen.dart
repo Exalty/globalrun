@@ -15,6 +15,7 @@ import '../services/blockchain_service.dart';
 import 'run_history_screen.dart';
 import 'blockchain_certificate_screen.dart';
 import 'race_standings_screen.dart';
+import '../utils/human_error.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -234,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: DuoColors.heartRed,
-            content: Text('Gagal mengambil foto: $e'),
+            content: Text(HumanError.toMessage(e, defaultMessage: 'Tidak dapat mengambil foto. Pastikan izin kamera dan galeri telah diaktifkan.')),
             behavior: SnackBarBehavior.floating,
           ),
         );
