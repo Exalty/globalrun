@@ -340,29 +340,39 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                     textColor: Colors.white,
                     icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 18),
                     onPressed: () async {
-                      if (block.polygonscanUrl != null) {
-                        try {
-                          final uri = Uri.parse(block.polygonscanUrl!);
-                          final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          if (!launched && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: palette.heartRed,
-                                content: const Text('Tidak dapat membuka browser untuk melihat transaksi.'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                backgroundColor: palette.heartRed,
-                                content: Text(HumanError.toMessage(e, defaultMessage: 'Tidak dapat membuka penjelajah transaksi Polygonscan.')),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
+                      String targetUrl;
+                      if (block.polygonscanUrl != null &&
+                          !block.polygonscanUrl!.contains('/verify') &&
+                          block.polygonscanUrl!.isNotEmpty) {
+                        targetUrl = block.polygonscanUrl!;
+                      } else if (block.polygonTxHash != null && block.polygonTxHash!.isNotEmpty) {
+                        targetUrl = 'https://amoy.polygonscan.com/tx/${block.polygonTxHash}';
+                      } else {
+                        targetUrl =
+                            'https://amoy.polygonscan.com/address/${BlockchainService.medalContractAddress}';
+                      }
+
+                      try {
+                        final uri = Uri.parse(targetUrl);
+                        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (!launched && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: palette.heartRed,
+                              content: const Text('Tidak dapat membuka browser untuk melihat transaksi.'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: palette.heartRed,
+                              content: Text(HumanError.toMessage(e, defaultMessage: 'Tidak dapat membuka penjelajah transaksi Polygonscan.')),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
                         }
                       }
                     },
@@ -379,6 +389,38 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                     onPressed: () {
                       Navigator.pop(context);
                       _mintBlockToPolygon(block);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  DuoButton(
+                    text: '🔍 CEK KEASLIAN DI POLYGON',
+                    height: 48,
+                    backgroundColor: palette.primaryBlue,
+                    shadowColor: palette.primaryBlueShadow,
+                    textColor: Colors.white,
+                    icon: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 18),
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      final check = await widget.blockchainService.verifyHashOnPolygon(block.hash);
+                      if (!context.mounted) return;
+                      if (check['isMinted'] == true) {
+                        setState(_revalidate);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: palette.questGreen,
+                            content: const Text('Medali ini terbukti sudah tercatat on-chain di Polygon Amoy!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: palette.primaryBlue,
+                            content: const Text('Medali sah di Ledger Lokal (SHA-256). Belum dicetak ke Polygon on-chain.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 10),
@@ -725,9 +767,21 @@ class _BlockchainCertificateScreenState extends State<BlockchainCertificateScree
                                             const SizedBox(width: 6),
                                             GestureDetector(
                                               onTap: () {
-                                                if (block.polygonscanUrl != null) {
-                                                  launchUrl(Uri.parse(block.polygonscanUrl!), mode: LaunchMode.externalApplication);
+                                                String targetUrl;
+                                                if (block.polygonscanUrl != null &&
+                                                    !block.polygonscanUrl!.contains('/verify') &&
+                                                    block.polygonscanUrl!.isNotEmpty) {
+                                                  targetUrl = block.polygonscanUrl!;
+                                                } else if (block.polygonTxHash != null &&
+                                                    block.polygonTxHash!.isNotEmpty) {
+                                                  targetUrl =
+                                                      'https://amoy.polygonscan.com/tx/${block.polygonTxHash}';
+                                                } else {
+                                                  targetUrl =
+                                                      'https://amoy.polygonscan.com/address/${BlockchainService.medalContractAddress}';
                                                 }
+                                                launchUrl(Uri.parse(targetUrl),
+                                                    mode: LaunchMode.externalApplication);
                                               },
                                               child: Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

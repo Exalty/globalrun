@@ -123,7 +123,9 @@ class RunSummaryScreen extends StatelessWidget {
                         color: palette.textMuted, fontSize: 11, fontFamily: 'monospace'),
                   ),
                 ],
-                if (record.polygonscanUrl != null) ...[
+                if (record.polygonscanUrl != null &&
+                    !record.polygonscanUrl!.contains('/verify') &&
+                    record.polygonscanUrl!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   InkWell(
                     onTap: () => launchUrl(

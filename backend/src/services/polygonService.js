@@ -5,7 +5,7 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
 class PolygonService {
   constructor() {
-    this.rpcUrl = process.env.POLYGON_RPC_URL || 'https://polygon-amoy.drpc.org';
+    this.rpcUrl = process.env.POLYGON_RPC_URL || 'https://polygon-amoy-bor-rpc.publicnode.com';
     this.chainId = 80002;
     this.contractAddress = process.env.MEDAL_CONTRACT_ADDRESS || null;
     this.privateKey = process.env.POLYGON_ADMIN_PRIVATE_KEY || null;

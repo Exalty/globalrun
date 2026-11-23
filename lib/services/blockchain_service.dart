@@ -9,6 +9,15 @@ import 'auth_service.dart';
 class BlockchainService {
 
 
+  static const String medalContractAddress =
+      '0xd3907914e96462C7B0EcC2fB1d1527585a008263';
+
+  static const List<String> polygonAmoyRpcEndpoints = [
+    'https://polygon-amoy-bor-rpc.publicnode.com',
+    'https://rpc-amoy.polygon.technology',
+    'https://polygon-amoy.drpc.org',
+  ];
+
   static const String _genesisPrev =
       '0000000000000000000000000000000000000000000000000000000000000000';
   static const String _genesisTimestamp = '2026-01-01T00:00:00Z';
@@ -320,6 +329,96 @@ class BlockchainService {
     }
     return {
       'success': false,
+      'error': lastErr,
+    };
+  }
+
+  /// Membuat ABI hex call untuk fungsi smart contract:
+  /// isHashMinted(string hash) view returns (bool)
+  /// Selector: 0x64545487
+  static String encodeIsHashMintedCall(String hash) {
+    const selector = '0x64545487';
+    final bytes = utf8.encode(hash);
+    const offsetHex = '0000000000000000000000000000000000000000000000000000000000000020';
+    final lenHex = bytes.length.toRadixString(16).padLeft(64, '0');
+    final dataHex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    final remainder = dataHex.length % 64;
+    final padding = remainder == 0 ? '' : '0' * (64 - remainder);
+    return '$selector$offsetHex$lenHex$dataHex$padding';
+  }
+
+  /// Memverifikasi keaslian medali secara langsung ke smart contract Polygon Amoy
+  /// via eth_call RPC publik tanpa memerlukan server lokal.
+  Future<Map<String, dynamic>> verifyHashOnPolygon(String hashSha256) async {
+    final cleanHash = hashSha256.trim();
+    if (cleanHash.isEmpty) {
+      return {'success': false, 'isMinted': false, 'error': 'Hash tidak valid'};
+    }
+
+    final callData = encodeIsHashMintedCall(cleanHash);
+    String lastErr = 'Tidak dapat menghubungi RPC Polygon Amoy';
+
+    for (final rpcUrl in polygonAmoyRpcEndpoints) {
+      try {
+        final uri = Uri.parse(rpcUrl);
+        final payload = jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 1,
+          'method': 'eth_call',
+          'params': [
+            {
+              'to': medalContractAddress,
+              'data': callData,
+            },
+            'latest',
+          ],
+        });
+
+        final response = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: payload,
+        ).timeout(const Duration(seconds: 8));
+
+        if (response.statusCode == 200) {
+          final resJson = jsonDecode(response.body);
+          if (resJson['error'] != null) {
+            lastErr = resJson['error']?['message'] ?? 'RPC error';
+            continue;
+          }
+
+          final resultStr = resJson['result']?.toString() ?? '';
+          final isMinted = resultStr.endsWith('1');
+
+          // Jika terbukti minted, periksa apakah ada blok di memori yang perlu disinkronkan link explorer-nya
+          if (isMinted) {
+            final idx = _chain.indexWhere((b) => b.hash.toLowerCase() == cleanHash.toLowerCase());
+            if (idx != -1 && (_chain[idx].polygonscanUrl == null || _chain[idx].polygonscanUrl!.isEmpty)) {
+              _chain[idx] = _chain[idx].copyWith(
+                polygonscanUrl: 'https://amoy.polygonscan.com/address/$medalContractAddress',
+              );
+              await _saveLedger();
+            }
+          }
+
+          return {
+            'success': true,
+            'isMinted': isMinted,
+            'contractAddress': medalContractAddress,
+            'contractUrl': 'https://amoy.polygonscan.com/address/$medalContractAddress',
+            'rpcUsed': rpcUrl,
+          };
+        }
+      } catch (e) {
+        lastErr = HumanError.toMessage(e, defaultMessage: 'Koneksi ke jaringan Polygon Amoy terputus.');
+        debugPrint('[BlockchainService] verifyHashOnPolygon error on $rpcUrl: $e');
+      }
+    }
+
+    return {
+      'success': false,
+      'isMinted': false,
+      'contractAddress': medalContractAddress,
       'error': lastErr,
     };
   }

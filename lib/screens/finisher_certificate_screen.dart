@@ -29,7 +29,99 @@ class FinisherCertificateScreen extends StatefulWidget {
 class _FinisherCertificateScreenState extends State<FinisherCertificateScreen> {
   final GlobalKey _certificateKey = GlobalKey();
   bool _isSaving = false;
+  bool _isVerifyingOnChain = false;
   String? _savedFilePath;
+  Block? _currentBlock;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentBlock = widget.block;
+  }
+
+  Future<void> _checkOnChainAuthenticity() async {
+    final palette = DuoColors.of(context);
+    setState(() => _isVerifyingOnChain = true);
+
+    try {
+      final service = widget.blockchainService ?? BlockchainService();
+      final res = await service.verifyHashOnPolygon(_currentBlock!.hash);
+      if (!mounted) return;
+
+      if (res['success'] == true) {
+        final isMinted = res['isMinted'] == true;
+        if (isMinted) {
+          final contractUrl = (res['contractUrl'] as String?) ??
+              'https://amoy.polygonscan.com/address/${BlockchainService.medalContractAddress}';
+
+          setState(() {
+            _currentBlock = _currentBlock!.copyWith(
+              polygonscanUrl: _currentBlock!.polygonscanUrl ?? contractUrl,
+            );
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: palette.questGreen,
+              content: const Row(
+                children: [
+                  Icon(Icons.verified_rounded, color: Colors.white),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Piagam 100% TERVERIFIKASI On-Chain di Polygon Amoy Smart Contract!',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: palette.primaryBlue,
+              content: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: Colors.white),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Piagam sah di Buku Besar Kriptografis Lokal (SHA-256). Belum dicatat on-chain ke Polygon Amoy.',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: palette.heartRed,
+            content: Text(res['error'] ?? 'Gagal menghubungi jaringan Polygon.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: palette.heartRed,
+          content: Text(HumanError.toMessage(e, defaultMessage: 'Gagal memverifikasi ke jaringan Polygon.')),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isVerifyingOnChain = false);
+      }
+    }
+  }
 
   String _formatDuration(int totalSeconds) {
     if (totalSeconds <= 0) return '00:00:00';
@@ -51,11 +143,11 @@ class _FinisherCertificateScreenState extends State<FinisherCertificateScreen> {
   }
 
   String _getVerificationPayload() {
-    final b = widget.block;
+    final b = _currentBlock ?? widget.block;
     if (b.polygonscanUrl != null && b.polygonscanUrl!.isNotEmpty) {
       return b.polygonscanUrl!;
     }
-    return 'https://amoy.polygonscan.com/verify?token=${b.tokenId}&hash=${b.hash}&runner=${Uri.encodeComponent(b.participantName)}&race=${Uri.encodeComponent(b.raceTitle)}&time=${b.durationSeconds}&dist=${b.distanceKm}';
+    return 'https://globalrun.app/verify?token=${b.tokenId}&hash=${b.hash}&runner=${Uri.encodeComponent(b.participantName)}&race=${Uri.encodeComponent(b.raceTitle)}&time=${b.durationSeconds}&dist=${b.distanceKm}';
   }
 
   Future<void> _saveCertificateToStorage() async {
@@ -141,7 +233,7 @@ class _FinisherCertificateScreenState extends State<FinisherCertificateScreen> {
   @override
   Widget build(BuildContext context) {
     final palette = DuoColors.of(context);
-    final block = widget.block;
+    final block = _currentBlock ?? widget.block;
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -255,7 +347,25 @@ class _FinisherCertificateScreenState extends State<FinisherCertificateScreen> {
               const SizedBox(height: 12),
             ],
 
-            // Tombol Aksi 3: Pindai Sertifikat Fisik
+            // Tombol Aksi 3: Cek Keaslian ke Polygon Amoy RPC
+            DuoButton(
+              text: _isVerifyingOnChain ? 'MEMVERIFIKASI KE POLYGON...' : '🔍 CEK STATUS DI POLYGON AMOY',
+              height: 48,
+              backgroundColor: palette.primaryBlue,
+              shadowColor: palette.primaryBlueShadow,
+              textColor: Colors.white,
+              icon: _isVerifyingOnChain
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
+              onPressed: _isVerifyingOnChain ? null : _checkOnChainAuthenticity,
+            ),
+            const SizedBox(height: 12),
+
+            // Tombol Aksi 4: Pindai Sertifikat Fisik
             DuoButton(
               text: '📷 PINDAI SERTIFIKAT FISIK LAIN',
               height: 48,

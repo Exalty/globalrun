@@ -99,12 +99,13 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
     }
   }
 
-  void _processScannedPayload(String payload) {
+  Future<void> _processScannedPayload(String payload) async {
     setState(() => _isProcessing = true);
     _controller.stop();
 
     // Model audit keaslian sertifikat
     bool isAuthentic = false;
+    bool? isOnChain;
     String? athleteName;
     String? raceTitle;
     String? distanceStr;
@@ -115,7 +116,7 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
     String? explorerUrl;
 
     try {
-      final uri = Uri.tryParse(payload);
+      final uri = Uri.tryParse(payload.trim());
       if (uri != null) {
         if (uri.queryParameters.isNotEmpty) {
           tokenId = uri.queryParameters['token'];
@@ -134,31 +135,37 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
 
         // Cek jika payload adalah URL Polygonscan
         if (uri.host.contains('polygonscan.com')) {
-          explorerUrl = payload;
           final segments = uri.pathSegments;
           final txIdx = segments.indexOf('tx');
           if (txIdx != -1 && segments.length > txIdx + 1) {
             polygonTx = segments[txIdx + 1];
+            explorerUrl = 'https://amoy.polygonscan.com/tx/$polygonTx';
+          } else if (segments.contains('address') || segments.contains('token')) {
+            explorerUrl = payload;
+          } else {
+            // Abaikan URL fiktif seperti /verify
+            explorerUrl = null;
           }
         }
       }
 
       // Cari di blockchain lokal yang tersimpan
       Block? matchedBlock;
-      if (widget.blockchainService != null) {
-        for (final b in widget.blockchainService!.chain) {
-          if (hashSha256 != null && b.hash.toLowerCase() == hashSha256.toLowerCase()) {
-            matchedBlock = b;
-            break;
-          }
-          if (tokenId != null && b.tokenId.toLowerCase() == tokenId.toLowerCase()) {
-            matchedBlock = b;
-            break;
-          }
-          if (polygonTx != null && b.polygonTxHash?.toLowerCase() == polygonTx.toLowerCase()) {
-            matchedBlock = b;
-            break;
-          }
+      final service = widget.blockchainService ?? BlockchainService();
+      await service.ready;
+
+      for (final b in service.chain) {
+        if (hashSha256 != null && b.hash.toLowerCase() == hashSha256.toLowerCase()) {
+          matchedBlock = b;
+          break;
+        }
+        if (tokenId != null && b.tokenId.toLowerCase() == tokenId.toLowerCase()) {
+          matchedBlock = b;
+          break;
+        }
+        if (polygonTx != null && b.polygonTxHash?.toLowerCase() == polygonTx.toLowerCase()) {
+          matchedBlock = b;
+          break;
         }
       }
 
@@ -171,7 +178,10 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
         tokenId = matchedBlock.tokenId;
         hashSha256 = matchedBlock.hash;
         polygonTx = matchedBlock.polygonTxHash;
-        explorerUrl = matchedBlock.polygonscanUrl ?? explorerUrl;
+        if (matchedBlock.polygonscanUrl != null &&
+            !matchedBlock.polygonscanUrl!.contains('/verify')) {
+          explorerUrl = matchedBlock.polygonscanUrl;
+        }
       } else if (polygonTx != null && polygonTx.startsWith('0x') && polygonTx.length >= 64) {
         // Terdeteksi transaksi Polygon on-chain sah dari explorer
         isAuthentic = true;
@@ -184,12 +194,32 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
         athleteName ??= 'PELARI RESMI';
         raceTitle ??= 'FINISHER GLOBALRUN';
       }
+
+      // Live verification langsung ke smart contract Polygon Amoy via RPC
+      if (hashSha256 != null && hashSha256.isNotEmpty) {
+        try {
+          final polyCheck = await service.verifyHashOnPolygon(hashSha256);
+          if (polyCheck['success'] == true) {
+            if (polyCheck['isMinted'] == true) {
+              isOnChain = true;
+              isAuthentic = true;
+              explorerUrl ??= polyCheck['contractUrl'] ??
+                  'https://amoy.polygonscan.com/address/${BlockchainService.medalContractAddress}';
+            } else {
+              isOnChain = false;
+            }
+          }
+        } catch (_) {}
+      }
     } catch (_) {
       isAuthentic = false;
     }
 
+    if (!mounted) return;
+
     _showVerificationResultDialog(
       isAuthentic: isAuthentic,
+      isOnChain: isOnChain,
       athleteName: athleteName,
       raceTitle: raceTitle,
       distanceStr: distanceStr,
@@ -204,6 +234,7 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
 
   void _showVerificationResultDialog({
     required bool isAuthentic,
+    bool? isOnChain,
     String? athleteName,
     String? raceTitle,
     String? distanceStr,
@@ -215,6 +246,7 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
     required String rawPayload,
   }) {
     final palette = DuoColors.of(context);
+    final isPolygonMinted = isOnChain == true || (polygonTx != null && polygonTx.isNotEmpty);
 
     showModalBottomSheet(
       context: context,
@@ -255,37 +287,51 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
                 height: 72,
                 decoration: BoxDecoration(
                   color: isAuthentic
-                      ? palette.questGreen.withValues(alpha: 0.15)
+                      ? (isPolygonMinted
+                          ? palette.questGreen.withValues(alpha: 0.15)
+                          : palette.primaryBlue.withValues(alpha: 0.15))
                       : palette.heartRed.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isAuthentic ? palette.questGreen : palette.heartRed,
+                    color: isAuthentic
+                        ? (isPolygonMinted ? palette.questGreen : palette.primaryBlue)
+                        : palette.heartRed,
                     width: 2.5,
                   ),
                 ),
                 child: Icon(
                   isAuthentic ? Icons.verified_rounded : Icons.gpp_bad_rounded,
-                  color: isAuthentic ? palette.questGreen : palette.heartRed,
+                  color: isAuthentic
+                      ? (isPolygonMinted ? palette.questGreen : palette.primaryBlue)
+                      : palette.heartRed,
                   size: 40,
                 ),
               ),
               const SizedBox(height: 14),
 
               Text(
-                isAuthentic ? 'SERTIFIKAT ASLI & TERVERIFIKASI' : 'SERTIFIKAT TIDAK DIKENAL',
+                isAuthentic
+                    ? (isPolygonMinted
+                        ? 'ON-CHAIN POLYGON AMOY: ASLI'
+                        : 'LEDGER LOKAL: TERVERIFIKASI')
+                    : 'SERTIFIKAT TIDAK DIKENAL',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isAuthentic ? palette.questGreen : palette.heartRed,
+                  color: isAuthentic
+                      ? (isPolygonMinted ? palette.questGreen : palette.primaryBlue)
+                      : palette.heartRed,
                   fontWeight: FontWeight.w900,
-                  fontSize: 17,
+                  fontSize: 16.5,
                   letterSpacing: 0.8,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 isAuthentic
-                    ? 'Piagam ini terbukti sah dan tercatat di ledger kriptografi resmi.'
-                    : 'QR Code ini tidak cocok dengan catatan konsensus atau telah dimanipulasi.',
+                    ? (isPolygonMinted
+                        ? 'Piagam ini 100% sah dan tercatat di Smart Contract Polygon Amoy.'
+                        : 'Piagam sah secara kriptografi (SHA-256). Belum dicatat on-chain ke Polygon Amoy.')
+                    : 'QR Code ini tidak cocok dengan catatan konsensus atau belum dicetak.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: palette.textMuted, fontSize: 12.5),
               ),
@@ -314,6 +360,13 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
                         const Divider(height: 16),
                         _buildAuditRow(palette, 'Token ID', tokenId),
                       ],
+                      const Divider(height: 16),
+                      _buildAuditRow(
+                        palette,
+                        'Status Jaringan',
+                        isPolygonMinted ? 'Polygon Amoy (On-Chain)' : 'Ledger Kriptografi Lokal',
+                        valueColor: isPolygonMinted ? palette.questGreen : palette.primaryBlue,
+                      ),
                       if (hashSha256 != null) ...[
                         const Divider(height: 16),
                         _buildAuditRow(
@@ -361,7 +414,9 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
               ],
 
               // Tombol Aksi
-              if (explorerUrl != null && explorerUrl.isNotEmpty) ...[
+              if (explorerUrl != null &&
+                  explorerUrl.isNotEmpty &&
+                  !explorerUrl.contains('/verify')) ...[
                 DuoButton(
                   text: '↗️ BUKA DI POLYGONSCAN',
                   height: 48,
@@ -400,7 +455,13 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
     });
   }
 
-  Widget _buildAuditRow(DuoColorPalette palette, String label, String value, {bool isMonospace = false}) {
+  Widget _buildAuditRow(
+    DuoColorPalette palette,
+    String label,
+    String value, {
+    bool isMonospace = false,
+    Color? valueColor,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -417,7 +478,7 @@ class _CertificateScannerScreenState extends State<CertificateScannerScreen> {
             value,
             textAlign: TextAlign.right,
             style: TextStyle(
-              color: palette.textPrimary,
+              color: valueColor ?? palette.textPrimary,
               fontWeight: FontWeight.w800,
               fontSize: 12.5,
               fontFamily: isMonospace ? 'monospace' : null,
